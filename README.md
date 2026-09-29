@@ -51,6 +51,44 @@ Evaluation uses 5-fold cross-validation with sex-stratified test sets and report
 
 ---
 
+## Setup
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Data layout
+
+Download and preprocess the PhysioNet 2021 databases so that `--data_dir` contains one folder per database, each with WFDB `.hea`/`.mat` pairs, plus the split file:
+
+```
+<data_dir>/
+├── WFDB_PTBXL/  WFDB_CPSC2018/  WFDB_CPSC2018_2/
+├── WFDB_Ga/     WFDB_ChapmanShaoxing/  WFDB_Ningbo/
+└── dataset_division.json
+```
+
+`dataset_division.json` maps each fold (`"0"`–`"4"`) to `male_balanced_test_idx`, `female_balanced_test_idx`, and `train_idx_<ratio>` / `val_idx_<ratio>` for every ratio in `100_0, 75_25, 50_50, 25_75, 0_100` (male_female). Indices refer to recordings in the order the folders above are listed, with files sorted by name within each folder. Pass `--division_file` to use a split file stored elsewhere.
+
+## Running
+
+```bash
+python train_pipeline.py --data_dir /path/to/PhysioNet2021_preprocessed \
+    --model xresnet101 --sex_ratio 50_50 --fold 0 --experiment_id xres_f50_fold0
+```
+
+Models: `cnn`, `resnet_attention`, `xresnet101`. Run `python train_pipeline.py -h` for all options. Outputs go to `results/<experiment_id>/` (arguments and test results for the female and male test sets), `results/model_weights/` (weights and training progress), and `runs/` (TensorBoard logs).
+
+### Smoke test with synthetic data
+
+```bash
+python scripts/make_dummy_data.py --out dummy_data
+python train_pipeline.py --data_dir dummy_data --model cnn --epochs 1 --batch_size 8
+```
+
+---
+
 ## Citation
 
 ```bibtex
