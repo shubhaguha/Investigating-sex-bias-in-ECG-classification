@@ -24,7 +24,7 @@ def find_challenge_files(data_directory_list):
     header_files = list()
     recording_files = list()
     for data_directory in data_directory_list:
-        for f in os.listdir(data_directory):
+        for f in sorted(os.listdir(data_directory)):
             root, extension = os.path.splitext(f)
             if not root.startswith('.') and extension=='.hea':
                 header_file = os.path.join(data_directory, root + '.hea')
@@ -180,23 +180,20 @@ dataset_labels = {
     "ningbo":4
 }
 
+# Database folder names, matched against the parent directory of each header file
 dataset_paths = {
-    "ptbxl": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_PTBXL',
-    "cpsc": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_CPSC2018',
-    "cpsc_2": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_CPSC2018_2',
-    "ga": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_Ga',
-    "chapman": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_ChapmanShaoxing',
-    "ningbo": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_Ningbo'
+    "ptbxl": 'WFDB_PTBXL',
+    "cpsc": 'WFDB_CPSC2018',
+    "cpsc_2": 'WFDB_CPSC2018_2',
+    "ga": 'WFDB_Ga',
+    "chapman": 'WFDB_ChapmanShaoxing',
+    "ningbo": 'WFDB_Ningbo'
 }
 def get_class_source(file_path):
+    folder = os.path.basename(os.path.dirname(os.path.abspath(file_path)))
     for dataset, paths in dataset_paths.items():
-        if isinstance(paths, list):
-            for path in paths:
-                if file_path.startswith(path):
-                    return dataset_labels[dataset]
-        else:
-            if file_path.startswith(paths):
-                return dataset_labels[dataset]
+        if folder == paths:
+            return dataset_labels[dataset]
     return None  # Return None if no match is found
 
 def get_nsamp(header):
@@ -239,8 +236,8 @@ class dataset:
         elif self.equivalent_cl is None:
             self.equivalent_classes = []
 
-        for i in self.classes_to_skip:
-            self.classes.remove(i)
+        if self.classes_to_skip:
+            dataset.classes = [c for c in dataset.classes if c not in self.classes_to_skip]
         for h in tqdm(header_files):
             tmp = dict()
             tmp['header'] = h
@@ -310,8 +307,7 @@ class dataset:
         if self.sample:
             fs = int(fs)
             if data.shape[-1] > self.length:
-                idx = data.shape[-1] - self.length - 1
-                idx = np.random.randint(idx)
+                idx = np.random.randint(data.shape[-1] - self.length + 1)
                 data = data[:, idx:idx + self.length]
             if data.shape[-1] < self.length:
                 def extend_array_with_zeros(array, target_length):
