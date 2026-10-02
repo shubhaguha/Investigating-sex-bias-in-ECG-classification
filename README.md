@@ -87,6 +87,16 @@ python scripts/make_dummy_data.py --out dummy_data
 python train_pipeline.py --data_dir dummy_data --model cnn --epochs 1 --batch_size 8
 ```
 
+### Smoke test with the real data
+
+Once the PhysioNet 2021 data is downloaded (the raw `training/<database>/g*/` layout works as is), run:
+
+```bash
+python scripts/smoke_test_real_data.py --cinc_dir ~/data/CinC
+```
+
+This samples ~40 labelled recordings with known sex from each database, links them into `smoke_test/data/` in the layout above, writes a matching split file, and trains each model for one epoch. It reports which databases it found and ends with an OK/FAILED summary per model. It leaves the original data unchanged.
+
 ---
 
 ## Citation
