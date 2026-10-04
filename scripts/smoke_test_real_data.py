@@ -26,30 +26,12 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 from data.data_loader import load_header, get_sex, get_labels, get_frequency  # noqa: E402
+from data.preprocessing import SOURCES, find_source_dirs  # noqa: E402
 
-# Target folder -> folder names it may have in the raw download (lower-cased) or a preprocessed copy
-SOURCES = {
-    'WFDB_PTBXL': ['ptb-xl', 'ptbxl', 'wfdb_ptbxl'],
-    'WFDB_CPSC2018': ['cpsc_2018', 'cpsc2018', 'wfdb_cpsc2018'],
-    'WFDB_CPSC2018_2': ['cpsc_2018_extra', 'cpsc2018_2', 'wfdb_cpsc2018_2'],
-    'WFDB_Ga': ['georgia', 'ga', 'wfdb_ga'],
-    'WFDB_ChapmanShaoxing': ['chapman_shaoxing', 'chapmanshaoxing', 'wfdb_chapmanshaoxing'],
-    'WFDB_Ningbo': ['ningbo', 'wfdb_ningbo'],
-}
 TARGET_CODES = {'164889003',                            # AF
                 '426783006', '426177001', '427084000',  # SR (+ brady/tachy)
                 '57054005', '54329005', '164865005'}    # MI
 RATIOS = ['100_0', '75_25', '50_50', '25_75', '0_100']
-
-
-def find_source_dirs(cinc_dir):
-    found = {k: None for k in SOURCES}
-    for root, dirs, _ in os.walk(cinc_dir):
-        for d in dirs:
-            for target, aliases in SOURCES.items():
-                if found[target] is None and d.lower() in aliases:
-                    found[target] = os.path.join(root, d)
-    return found
 
 
 def eligible_headers(source_dir):

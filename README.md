@@ -58,9 +58,19 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Preprocessing
+
+Download the [PhysioNet 2021 challenge data](https://physionet.org/content/challenge-2021/1.0.3/), then run:
+
+```bash
+python scripts/preprocess_data.py --cinc_dir ~/data/CinC-2021
+```
+
+This finds the six databases in the download, resamples every recording to 500 Hz, applies a 1–47 Hz 3rd-order Butterworth bandpass filter (zero-phase, via `scipy.signal.sosfiltfilt`), and writes the result to `data/PhysioNet2021_preprocessed/` (the default `--data_dir` of `train_pipeline.py`). Signals stay in int16 ADC units, so the output is about the size of the six input databases. It uses all CPU cores (`--workers` to change), and records already written are skipped, so an interrupted run can be resumed. Segmenting to 4096 samples and z-score normalisation are done at load time.
+
 ## Data layout
 
-Download and preprocess the PhysioNet 2021 databases so that `--data_dir` contains one folder per database, each with WFDB `.hea`/`.mat` pairs, plus the split file:
+`--data_dir` must contain one folder per database, each with WFDB `.hea`/`.mat` pairs, plus the split file:
 
 ```
 <data_dir>/
@@ -89,10 +99,10 @@ python train_pipeline.py --data_dir dummy_data --model cnn --epochs 1 --batch_si
 
 ### Smoke test with the real data
 
-Once the PhysioNet 2021 data is downloaded (the raw `training/<database>/g*/` layout works as is), run:
+This works on either the raw download (`training/<database>/g*/`) or the preprocessed folder. Point it at the preprocessed folder to test exactly what training will see:
 
 ```bash
-python scripts/smoke_test_real_data.py --cinc_dir ~/data/CinC
+python scripts/smoke_test_real_data.py --cinc_dir data/PhysioNet2021_preprocessed
 ```
 
 This samples ~40 labelled recordings with known sex from each database, links them into `smoke_test/data/` in the layout above, writes a matching split file, and trains each model for one epoch. It reports which databases it found and ends with an OK/FAILED summary per model. It leaves the original data unchanged.

@@ -3,8 +3,9 @@ import random
 import numpy as np
 import pandas as pd
 import torch
-from scipy import signal
 from tqdm import tqdm
+
+from data.preprocessing import resample_to_500
 
 
 def min_max_normalize(arr):
@@ -294,14 +295,8 @@ class dataset:
         data = np.nan_to_num(data)
 
         # resample to 500hz
-        if fs == float(1000):
-            data = signal.resample_poly(data, up=1, down=2, axis=-1)  # to 500Hz
-            fs = 500
-        elif fs == float(500):
-            pass
-        else:
-            data = signal.resample(data, int(data.shape[1] * 500 / fs), axis=1)
-            fs = 500
+        data = resample_to_500(data, fs)
+        fs = 500
 
         if self.sample:
             fs = int(fs)
