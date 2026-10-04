@@ -53,18 +53,26 @@ def find_source_dirs(cinc_dir):
 
 
 def eligible_headers(source_dir):
-    """Headers with a .mat file, a target label and Male/Female sex, grouped by sex."""
+    """Headers with a .mat file, a target label and Male/Female sex, grouped by sex.
+
+    Also returns counts of why the other headers were rejected."""
     by_sex = {'Male': [], 'Female': []}
+    skipped = {'headers': 0, 'no .mat': 0, 'sex not Male/Female': 0, 'no AF/SR/MI label': 0}
     for h in sorted(glob.glob(os.path.join(source_dir, '**', '*.hea'), recursive=True)):
+        skipped['headers'] += 1
         if not os.path.isfile(h[:-4] + '.mat'):
+            skipped['no .mat'] += 1
             continue
         hdr = load_header(h)
         sex = get_sex(hdr)
         if sex not in by_sex or get_frequency(hdr) is None:
+            skipped['sex not Male/Female'] += 1
             continue
         if TARGET_CODES & set(get_labels(hdr, [])):
             by_sex[sex].append(h)
-    return by_sex
+        else:
+            skipped['no AF/SR/MI label'] += 1
+    return by_sex, skipped
 
 
 def link(src, dst):
@@ -101,7 +109,7 @@ def main():
         if source_dir is None:
             print(f'  {target:22s} NOT FOUND (still downloading?) - skipped')
             continue
-        by_sex = eligible_headers(source_dir)
+        by_sex, skipped = eligible_headers(source_dir)
         chosen = []
         for sex in ('Male', 'Female'):
             chosen += [(h, sex) for h in rng.sample(by_sex[sex], min(args.per_source // 2, len(by_sex[sex])))]
@@ -111,6 +119,7 @@ def main():
             link(h[:-4] + '.mat', os.path.join(out, name + '.mat'))
         print(f'  {target:22s} {source_dir}: {len(by_sex["Male"])} M / {len(by_sex["Female"])} F eligible, '
               f'{len(chosen)} sampled')
+        print('      ' + ', '.join(f'{k}: {v}' for k, v in skipped.items()))
 
     # Same ordering as data.data_loader.find_challenge_files: databases in this order, files sorted by name
     for target in SOURCES:
@@ -122,7 +131,9 @@ def main():
     males = [i for i, s in enumerate(sexes) if s == 'Male']
     females = [i for i, s in enumerate(sexes) if s == 'Female']
     if min(len(males), len(females)) < 10:
-        sys.exit(f'Too few usable recordings ({len(males)} M / {len(females)} F); check --cinc_dir')
+        sys.exit(f'Too few usable recordings ({len(males)} M / {len(females)} F); see the counts above. '
+                 'If "headers" is 0, point --cinc_dir at the downloaded data; if "no .mat" matches it, '
+                 'the signal files have not been downloaded yet.')
 
     division = {}
     for fold in range(5):

@@ -96,27 +96,29 @@ def get_leads(header):
             break
     return tuple(leads)
 
+# Get the value of a "#Key: value" comment line from header.
+# Accepts both "#Sex: Male" (CinC 2020) and "# Sex: Male" (CinC 2021) styles.
+def get_header_field(header, key):
+    value = None
+    for l in header.split('\n'):
+        l = l.strip()
+        if l.startswith('#') and l[1:].lstrip().startswith(key + ':'):
+            value = l.split(':', 1)[1].strip()
+    return value
+
 # Get age from header.
 def get_age(header):
-    age = None
-    for l in header.split('\n'):
-        if l.startswith('#Age'):
-            try:
-                age = float(l.split(': ')[1].strip())
-            except:
-                age = float('nan')
-    return age
+    age = get_header_field(header, 'Age')
+    if age is None:
+        return None
+    try:
+        return float(age)
+    except ValueError:
+        return float('nan')
 
 # Get sex from header.
 def get_sex(header):
-    sex = None
-    for l in header.split('\n'):
-        if l.startswith('#Sex'):
-            try:
-                sex = l.split(': ')[1].strip()
-            except:
-                pass
-    return sex
+    return get_header_field(header, 'Sex') or None
 
 # Get frequency from header.
 def get_num_leads(header):
@@ -160,15 +162,12 @@ def get_num_samples(header):
 # Get labels from header.
 def get_labels(header, classes_to_skip):
     labels = list()
-    for l in header.split('\n'):
-        if l.startswith('#Dx'):
-            try:
-                entries = l.split(': ')[1].split(',')
-                for entry in entries:
-                    if entry not in classes_to_skip:
-                        labels.append(entry.strip())
-            except:
-                pass
+    dx = get_header_field(header, 'Dx')
+    if dx:
+        for entry in dx.split(','):
+            entry = entry.strip()
+            if entry and entry not in classes_to_skip:
+                labels.append(entry)
     return labels
 
 dataset_labels = {

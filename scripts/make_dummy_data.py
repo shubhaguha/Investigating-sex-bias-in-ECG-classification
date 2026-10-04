@@ -25,7 +25,8 @@ def write_record(directory, name, fs, n_samples, sex, dx, rng):
     savemat(os.path.join(directory, name + '.mat'), {'val': data})
     lines = [f'{name} 12 {fs} {n_samples}']
     lines += [f'{name}.mat 16+24 1000/mV 16 0 0 0 0 {lead}' for lead in LEADS]
-    lines += [f'#Age: {rng.integers(20, 90)}', f'#Sex: {sex}', f'#Dx: {dx}', '#Rx: Unknown', '#Hx: Unknown', '#Sx: Unknown']
+    # CinC 2021 header style ("# Key: value")
+    lines += [f'# Age: {rng.integers(20, 90)}', f'# Sex: {sex}', f'# Dx: {dx}', '# Rx: Unknown', '# Hx: Unknown', '# Sx: Unknown']
     with open(os.path.join(directory, name + '.hea'), 'w') as f:
         f.write('\n'.join(lines) + '\n')
 
