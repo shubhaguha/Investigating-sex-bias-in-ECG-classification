@@ -27,7 +27,7 @@ from tqdm import tqdm
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 from data.data_loader import load_header, get_frequency  # noqa: E402
-from data.preprocessing import SOURCES, find_source_dirs, preprocess_recording  # noqa: E402
+from data.preprocessing import find_source_dirs, preprocess_recording  # noqa: E402
 
 
 def rewrite_header(header, fs, data):

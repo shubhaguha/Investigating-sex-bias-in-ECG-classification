@@ -11,6 +11,7 @@ import torch.optim as optim
 
 from torch.utils.data import DataLoader, Subset
 from data.data_loader import *
+from data.preprocessing import SOURCES
 from models.resnet_attention import *
 from models.cnn import *
 from fastai.vision.models.xresnet import xresnet101
@@ -56,6 +57,8 @@ def parse_args():
                         help="Number of classes")
     parser.add_argument('-g', '--gpu', type=int, nargs='+', default=0,
                         help="GPU number(s)")
+    parser.add_argument('-w', '--num_workers', type=int, default=0,
+                        help="DataLoader worker processes")
     parser.add_argument('-s', '--seed', type=int, default=42,
                         help="Random seed")
     parser.add_argument('-alpha', '--alpha', type=float, default=0.75,
@@ -113,8 +116,7 @@ def main():
     results_dir = setup_directories(args["experiment_id"])
     save_args(args, results_dir)
 
-    data_directory = [os.path.join(args["data_dir"], db) for db in
-                      ['WFDB_PTBXL', 'WFDB_CPSC2018', 'WFDB_CPSC2018_2', 'WFDB_Ga', 'WFDB_ChapmanShaoxing', 'WFDB_Ningbo']]
+    data_directory = [os.path.join(args["data_dir"], db) for db in SOURCES]
 
     print('Finding header and recording files...')
     print(data_directory)
@@ -127,8 +129,16 @@ def main():
     file_path = args["division_file"] or os.path.join(args["data_dir"], "dataset_division.json")
 
     with open(file_path, "r") as f:
-        dataset_division = json.load(f)[str(args['fold'])]
-        print(args['fold'])
+        division = json.load(f)
+    # Splits from scripts/make_dataset_division.py record which recordings they index
+    if 'meta' in division:
+        records = [os.path.relpath(h, args["data_dir"]) for h in header_files]
+        if records != division['meta']['records']:
+            sys.exit(f'{file_path} was built for a different set of recordings than {args["data_dir"]} '
+                     f'({len(division["meta"]["records"])} vs {len(records)}); regenerate it with '
+                     'scripts/make_dataset_division.py')
+    dataset_division = division[str(args['fold'])]
+    print('Fold:', args['fold'])
     male_test_idx = dataset_division["male_balanced_test_idx"]
     female_test_idx = dataset_division["female_balanced_test_idx"]
 
@@ -142,13 +152,13 @@ def main():
 
 
     train_loader = DataLoader(dataset=train, batch_size=args["batch_size"], shuffle=True, collate_fn=collate,
-                              num_workers=0, pin_memory=torch.cuda.is_available(), drop_last=True)
+                              num_workers=args["num_workers"], pin_memory=torch.cuda.is_available(), drop_last=True)
     val_loader = DataLoader(dataset=val, batch_size=args["batch_size"], shuffle=True, collate_fn=collate,
-                            num_workers=0, pin_memory=torch.cuda.is_available(), drop_last=False)
+                            num_workers=args["num_workers"], pin_memory=torch.cuda.is_available(), drop_last=False)
     male_test_loader = DataLoader(dataset=male_test, batch_size=args["batch_size"], shuffle=False, collate_fn=collate,
-                             num_workers=0, pin_memory=torch.cuda.is_available(), drop_last=False)
+                             num_workers=args["num_workers"], pin_memory=torch.cuda.is_available(), drop_last=False)
     female_test_loader = DataLoader(dataset=female_test, batch_size=args["batch_size"], shuffle=False, collate_fn=collate,
-                                  num_workers=0, pin_memory=torch.cuda.is_available(), drop_last=False)
+                                  num_workers=args["num_workers"], pin_memory=torch.cuda.is_available(), drop_last=False)
 
     model, optimizer, criterion = setup_model(args)
 

@@ -26,12 +26,12 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 from data.data_loader import load_header, get_sex, get_labels, get_frequency  # noqa: E402
-from data.preprocessing import SOURCES, find_source_dirs  # noqa: E402
+from data.preprocessing import find_source_dirs  # noqa: E402
+from data.division import build_division, dataset_header_files, load_labels_and_sex, record_ids  # noqa: E402
 
 TARGET_CODES = {'164889003',                            # AF
                 '426783006', '426177001', '427084000',  # SR (+ brady/tachy)
                 '57054005', '54329005', '164865005'}    # MI
-RATIOS = ['100_0', '75_25', '50_50', '25_75', '0_100']
 
 
 def eligible_headers(source_dir):
@@ -81,7 +81,6 @@ def main():
 
     found = find_source_dirs(cinc_dir)
     data_dir = os.path.join(args.work_dir, 'data')
-    sexes = []
     print('Sampling recordings:')
     for target, source_dir in found.items():
         out = os.path.join(data_dir, target)
@@ -103,40 +102,18 @@ def main():
               f'{len(chosen)} sampled')
         print('      ' + ', '.join(f'{k}: {v}' for k, v in skipped.items()))
 
-    # Same ordering as data.data_loader.find_challenge_files: databases in this order, files sorted by name
-    for target in SOURCES:
-        out = os.path.join(data_dir, target)
-        for f in sorted(os.listdir(out)):
-            if f.endswith('.hea'):
-                sexes.append(get_sex(load_header(os.path.join(out, f))))
-
-    males = [i for i, s in enumerate(sexes) if s == 'Male']
-    females = [i for i, s in enumerate(sexes) if s == 'Female']
-    if min(len(males), len(females)) < 10:
-        sys.exit(f'Too few usable recordings ({len(males)} M / {len(females)} F); see the counts above. '
+    header_files = dataset_header_files(data_dir)
+    labels, sexes = load_labels_and_sex(header_files)
+    n_m, n_f = sexes.count('Male'), sexes.count('Female')
+    if min(n_m, n_f) < 10:
+        sys.exit(f'Too few usable recordings ({n_m} M / {n_f} F); see the counts above. '
                  'If "headers" is 0, point --cinc_dir at the downloaded data; if "no .mat" matches it, '
                  'the signal files have not been downloaded yet.')
-
-    division = {}
-    for fold in range(5):
-        m, f = males[:], females[:]
-        rng.shuffle(m)
-        rng.shuffle(f)
-        n_test = max(2, min(len(m), len(f)) // 5)
-        entry = {'male_balanced_test_idx': m[:n_test], 'female_balanced_test_idx': f[:n_test]}
-        m_rest, f_rest = m[n_test:], f[n_test:]
-        n = min(len(m_rest), len(f_rest))
-        for ratio in RATIOS:
-            n_m = n * int(ratio.split('_')[0]) // 100
-            pool = m_rest[:n_m] + f_rest[:n - n_m]
-            rng.shuffle(pool)
-            n_val = max(2, len(pool) // 5)
-            entry[f'val_idx_{ratio}'] = pool[:n_val]
-            entry[f'train_idx_{ratio}'] = pool[n_val:]
-        division[str(fold)] = entry
+    division, _ = build_division(labels, sexes, seed=args.seed)
+    division['meta'] = {'records': record_ids(header_files, data_dir)}
     with open(os.path.join(data_dir, 'dataset_division.json'), 'w') as fh:
         json.dump(division, fh)
-    print(f'Total: {len(sexes)} recordings ({len(males)} M / {len(females)} F)\n')
+    print(f'Total: {len(sexes)} recordings ({n_m} M / {n_f} F)\n')
 
     failed = []
     for model in args.models:

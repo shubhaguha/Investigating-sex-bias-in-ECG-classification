@@ -68,6 +68,23 @@ python scripts/preprocess_data.py --cinc_dir ~/data/CinC-2021
 
 This finds the six databases in the download, resamples every recording to 500 Hz, applies a 1–47 Hz 3rd-order Butterworth bandpass filter (zero-phase, via `scipy.signal.sosfiltfilt`), and writes the result to `data/PhysioNet2021_preprocessed/` (the default `--data_dir` of `train_pipeline.py`). Signals stay in int16 ADC units, so the output is about the size of the six input databases. It uses all CPU cores (`--workers` to change), and records already written are skipped, so an interrupted run can be resumed. Segmenting to 4096 samples and z-score normalisation are done at load time.
 
+## Train/test splits
+
+```bash
+python scripts/make_dataset_division.py --data_dir data/PhysioNet2021_preprocessed
+```
+
+writes `dataset_division.json` into the data directory and prints the size and AF/SR/MI prevalence of every split. The original split file is not published, so this generator follows the setup described above with these choices (see `data/division.py`):
+
+- Recordings are used if their sex is Male or Female and they carry at least one of AF, SR or MI.
+- Each sex is split into 5 folds, stratified by label combination. A fold's male and female test sets have the same size and the same label combinations.
+- For every ratio of a fold the training+validation set has the same total size (the smaller sex's pool), so only the sex mix changes. The sets are nested (e.g. the men in F25 are a subset of those in F0).
+- 10% of each training set is used for validation, with the same sex ratio (`--val_fraction`).
+- `--balance_train_labels` also gives the male and female training pools the same label distribution, so that sex is not confounded with disease prevalence (off by default).
+- The challenge headers have no patient IDs, so splits are per recording.
+
+The file stores the list of recordings it was built for, and `train_pipeline.py` stops if the data directory no longer matches it.
+
 ## Data layout
 
 `--data_dir` must contain one folder per database, each with WFDB `.hea`/`.mat` pairs, plus the split file:
@@ -89,6 +106,18 @@ python train_pipeline.py --data_dir /path/to/PhysioNet2021_preprocessed \
 ```
 
 Models: `cnn`, `resnet_attention`, `xresnet101`. Run `python train_pipeline.py -h` for all options. Outputs go to `results/<experiment_id>/` (arguments and test results for the female and male test sets), `results/model_weights/` (weights and training progress), and `runs/` (TensorBoard logs).
+
+### Full experiment on a SLURM cluster
+
+`slurm/train_array.sh` runs the whole grid (3 models × 5 sex ratios × 5 folds) as a 75-task job array, one GPU per task. Edit the `#SBATCH` lines (partition, account, time, memory) and the environment setup for your cluster, then from the repository root:
+
+```bash
+sbatch slurm/train_array.sh                   # all 75 runs
+sbatch --array=0-24 slurm/train_array.sh      # CNN only (25-49: resnet_attention, 50-74: xresnet101)
+DATA_DIR=/scratch/$USER/PhysioNet2021_preprocessed sbatch slurm/train_array.sh
+```
+
+Each task trains `<model>_<ratio>_fold<k>`, writing logs to `slurm/logs/` and results to `results/`. Finished runs are skipped, so the same command can be resubmitted after failures or timeouts. `EXTRA_ARGS="--epochs 50"` passes extra options to `train_pipeline.py`.
 
 ### Smoke test with synthetic data
 
