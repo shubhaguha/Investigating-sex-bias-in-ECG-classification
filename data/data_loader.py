@@ -3,8 +3,9 @@ import random
 import numpy as np
 import pandas as pd
 import torch
-from scipy import signal
 from tqdm import tqdm
+
+from data.preprocessing import resample_to_500
 
 
 def min_max_normalize(arr):
@@ -24,7 +25,7 @@ def find_challenge_files(data_directory_list):
     header_files = list()
     recording_files = list()
     for data_directory in data_directory_list:
-        for f in os.listdir(data_directory):
+        for f in sorted(os.listdir(data_directory)):
             root, extension = os.path.splitext(f)
             if not root.startswith('.') and extension=='.hea':
                 header_file = os.path.join(data_directory, root + '.hea')
@@ -96,27 +97,29 @@ def get_leads(header):
             break
     return tuple(leads)
 
+# Get the value of a "#Key: value" comment line from header.
+# Accepts both "#Sex: Male" (CinC 2020) and "# Sex: Male" (CinC 2021) styles.
+def get_header_field(header, key):
+    value = None
+    for l in header.split('\n'):
+        l = l.strip()
+        if l.startswith('#') and l[1:].lstrip().startswith(key + ':'):
+            value = l.split(':', 1)[1].strip()
+    return value
+
 # Get age from header.
 def get_age(header):
-    age = None
-    for l in header.split('\n'):
-        if l.startswith('#Age'):
-            try:
-                age = float(l.split(': ')[1].strip())
-            except:
-                age = float('nan')
-    return age
+    age = get_header_field(header, 'Age')
+    if age is None:
+        return None
+    try:
+        return float(age)
+    except ValueError:
+        return float('nan')
 
 # Get sex from header.
 def get_sex(header):
-    sex = None
-    for l in header.split('\n'):
-        if l.startswith('#Sex'):
-            try:
-                sex = l.split(': ')[1].strip()
-            except:
-                pass
-    return sex
+    return get_header_field(header, 'Sex') or None
 
 # Get frequency from header.
 def get_num_leads(header):
@@ -160,15 +163,12 @@ def get_num_samples(header):
 # Get labels from header.
 def get_labels(header, classes_to_skip):
     labels = list()
-    for l in header.split('\n'):
-        if l.startswith('#Dx'):
-            try:
-                entries = l.split(': ')[1].split(',')
-                for entry in entries:
-                    if entry not in classes_to_skip:
-                        labels.append(entry.strip())
-            except:
-                pass
+    dx = get_header_field(header, 'Dx')
+    if dx:
+        for entry in dx.split(','):
+            entry = entry.strip()
+            if entry and entry not in classes_to_skip:
+                labels.append(entry)
     return labels
 
 dataset_labels = {
@@ -180,23 +180,20 @@ dataset_labels = {
     "ningbo":4
 }
 
+# Database folder names, matched against the parent directory of each header file
 dataset_paths = {
-    "ptbxl": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_PTBXL',
-    "cpsc": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_CPSC2018',
-    "cpsc_2": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_CPSC2018_2',
-    "ga": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_Ga',
-    "chapman": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_ChapmanShaoxing',
-    "ningbo": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_Ningbo'
+    "ptbxl": 'WFDB_PTBXL',
+    "cpsc": 'WFDB_CPSC2018',
+    "cpsc_2": 'WFDB_CPSC2018_2',
+    "ga": 'WFDB_Ga',
+    "chapman": 'WFDB_ChapmanShaoxing',
+    "ningbo": 'WFDB_Ningbo'
 }
 def get_class_source(file_path):
+    folder = os.path.basename(os.path.dirname(os.path.abspath(file_path)))
     for dataset, paths in dataset_paths.items():
-        if isinstance(paths, list):
-            for path in paths:
-                if file_path.startswith(path):
-                    return dataset_labels[dataset]
-        else:
-            if file_path.startswith(paths):
-                return dataset_labels[dataset]
+        if folder == paths:
+            return dataset_labels[dataset]
     return None  # Return None if no match is found
 
 def get_nsamp(header):
@@ -239,8 +236,8 @@ class dataset:
         elif self.equivalent_cl is None:
             self.equivalent_classes = []
 
-        for i in self.classes_to_skip:
-            self.classes.remove(i)
+        if self.classes_to_skip:
+            dataset.classes = [c for c in dataset.classes if c not in self.classes_to_skip]
         for h in tqdm(header_files):
             tmp = dict()
             tmp['header'] = h
@@ -298,20 +295,13 @@ class dataset:
         data = np.nan_to_num(data)
 
         # resample to 500hz
-        if fs == float(1000):
-            data = signal.resample_poly(data, up=1, down=2, axis=-1)  # to 500Hz
-            fs = 500
-        elif fs == float(500):
-            pass
-        else:
-            data = signal.resample(data, int(data.shape[1] * 500 / fs), axis=1)
-            fs = 500
+        data = resample_to_500(data, fs)
+        fs = 500
 
         if self.sample:
             fs = int(fs)
             if data.shape[-1] > self.length:
-                idx = data.shape[-1] - self.length - 1
-                idx = np.random.randint(idx)
+                idx = np.random.randint(data.shape[-1] - self.length + 1)
                 data = data[:, idx:idx + self.length]
             if data.shape[-1] < self.length:
                 def extend_array_with_zeros(array, target_length):
