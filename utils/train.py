@@ -21,7 +21,12 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
 
     # Variables for early stopping
     best_loss = float('inf')
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=patience)
+    # At most two learning-rate reductions (1e-3 -> 1e-4 -> 1e-5), as in the paper
+    max_lr_reductions = 2
+    lr_reductions = 0
+    min_lr = optimizer.param_groups[0]['lr'] * 0.1 ** max_lr_reductions
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=patience,
+                                                     min_lr=min_lr * (1 - 1e-6))
 
     model_directory = 'results/model_weights/'
     os.makedirs(model_directory, exist_ok=True)
@@ -129,10 +134,11 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
             print(f"Learning rate decreased from {previous_lr} to {current_lr} !")
             model.load_state_dict(best_model_wts)
             trigger_times = 0
+            lr_reductions += 1
         previous_lr = current_lr
 
-        # Early stopping
-        if optimizer.param_groups[0]['lr'] < 0.0001: #trigger_times >= patience and
+        # Early stopping: no improvement for `patience` epochs after reaching the lowest learning rate
+        if lr_reductions >= max_lr_reductions and trigger_times >= patience:
             print('Early stopping at epoch {}'.format(epoch + 1))
             model.load_state_dict(best_model_wts)
             torch.save(model.state_dict(), model_directory + experiment_ID + '.pth')

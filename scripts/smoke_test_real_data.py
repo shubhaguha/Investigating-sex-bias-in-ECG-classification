@@ -27,7 +27,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 from data.data_loader import load_header, get_sex, get_labels, get_frequency  # noqa: E402
 from data.preprocessing import find_source_dirs  # noqa: E402
-from data.division import build_division, dataset_header_files, load_labels_and_sex, record_ids  # noqa: E402
+from data.division import build_division, dataset_header_files, load_metadata, record_ids  # noqa: E402
 
 TARGET_CODES = {'164889003',                            # AF
                 '426783006', '426177001', '427084000',  # SR (+ brady/tachy)
@@ -103,13 +103,13 @@ def main():
         print('      ' + ', '.join(f'{k}: {v}' for k, v in skipped.items()))
 
     header_files = dataset_header_files(data_dir)
-    labels, sexes = load_labels_and_sex(header_files)
+    labels, sexes, ages, sources = load_metadata(header_files)
     n_m, n_f = sexes.count('Male'), sexes.count('Female')
     if min(n_m, n_f) < 10:
         sys.exit(f'Too few usable recordings ({n_m} M / {n_f} F); see the counts above. '
                  'If "headers" is 0, point --cinc_dir at the downloaded data; if "no .mat" matches it, '
                  'the signal files have not been downloaded yet.')
-    division, _ = build_division(labels, sexes, seed=args.seed)
+    division, _, _ = build_division(labels, sexes, ages, sources, seed=args.seed)
     division['meta'] = {'records': record_ids(header_files, data_dir)}
     with open(os.path.join(data_dir, 'dataset_division.json'), 'w') as fh:
         json.dump(division, fh)

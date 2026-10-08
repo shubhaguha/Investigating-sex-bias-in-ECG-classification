@@ -74,14 +74,16 @@ This finds the six databases in the download, resamples every recording to 500 H
 python scripts/make_dataset_division.py --data_dir data/PhysioNet2021_preprocessed
 ```
 
-writes `dataset_division.json` into the data directory and prints the size and AF/SR/MI prevalence of every split. The original split file is not published, so this generator follows the setup described above with these choices (see `data/division.py`):
+writes `dataset_division.json` into the data directory. The original split file is not published, so this generator rebuilds it following Section 2.2, Figure 2 and Tables 3–4 of the paper (see `data/division.py`):
 
-- Recordings are used if their sex is Male or Female and they carry at least one of AF, SR or MI.
-- Each sex is split into 5 folds, stratified by label combination. A fold's male and female test sets have the same size and the same label combinations.
-- For every ratio of a fold the training+validation set has the same total size (the smaller sex's pool), so only the sex mix changes. The sets are nested (e.g. the men in F25 are a subset of those in F0).
-- 10% of each training set is used for validation, with the same sex ratio (`--val_fraction`).
-- `--balance_train_labels` also gives the male and female training pools the same label distribution, so that sex is not confounded with disease prevalence (off by default).
-- The challenge headers have no patient IDs, so splits are per recording.
+- Recordings of patients younger than 18 or with missing sex or age are excluded. Recordings with none of AF/SR/MI stay in as an "Other" category (all-zero targets).
+- Pseudo patient IDs are formed from age, sex and source dataset; all recordings sharing one stay in the same fold.
+- Age is binned into 18–39, 40–59, 60–79 and 80+, and the data is split into 5 folds stratified by age group, sex, source dataset and diagnostic category.
+- In each test fold, the male and female test sets get the same number of recordings per diagnostic category, sampled stratified by age group and source.
+- Training sets (F0–F100) come from the other folds. The female share holds within every diagnostic category, each sex is sampled stratified by age group and source, and the size is the same for every ratio and fold. 10% is used for validation, keeping the diagnostic distribution.
+- The paper does not say how "Other" was chosen for the test sets; Table 4 has about 3.5% as many as the AF/SR/MI recordings, which is the default (`--test_other_fraction`).
+
+The script prints its totals next to the paper's (87,663 recordings, 85,025 eligible, 749 pseudo-IDs, about 32,300 training recordings) and the per-category, age-group and source composition of every split, for comparison with Tables 3 and 4.
 
 The file stores the list of recordings it was built for, and `train_pipeline.py` stops if the data directory no longer matches it.
 
