@@ -2,8 +2,8 @@
 
 See data/division.py for how the folds, sex-balanced test sets and sex-ratio training sets are built
 (pseudo patient IDs, age groups, stratification by age group, sex, source dataset and diagnosis).
-The file also stores the record list it was built for; train_pipeline.py checks it so a split is
-never applied to a data directory with different contents.
+The file also stores the list of recordings it indexes ('meta' -> 'records'), so the split can be
+checked against the data directory later; train_pipeline.py ignores it.
 
 Usage:
     python scripts/make_dataset_division.py --data_root ~/ecg_data
