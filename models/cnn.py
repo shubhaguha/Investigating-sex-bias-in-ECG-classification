@@ -7,8 +7,7 @@ class CNN(nn.Module):
                  n_filters=[64, 64, 128, 128],
                  num_channels=12,
                  num_hidden=20,
-                 num_labels=3,
-                 length=4096):
+                 num_labels=3):
         super(CNN, self).__init__()
 
         self.conv_block1 = nn.Sequential(
@@ -40,7 +39,7 @@ class CNN(nn.Module):
         self.fc0 = nn.Flatten()
 
         self.fc1 = nn.Sequential(
-            nn.Linear(self._flat_features(num_channels, length), num_hidden),
+            nn.Linear(32384, num_hidden),
             # nn.ReLU(),
             nn.Dropout(0.3)
         )
@@ -49,14 +48,6 @@ class CNN(nn.Module):
             # nn.ReLU(),
             nn.Dropout(0.3)
         )
-
-    @torch.no_grad()
-    def _flat_features(self, num_channels, length):
-        # Size of the flattened conv output (32384 for 12 x 4096 input)
-        x = torch.zeros(1, num_channels, length)
-        for block in (self.conv_block1, self.conv_block2, self.conv_block3, self.conv_block4):
-            x = block(x)
-        return x.numel()
 
     def forward(self, x):
         x = self.conv_block1(x)

@@ -81,6 +81,8 @@ class ResnetAttention(nn.Module):
         x = torch.cat((x,l),dim=1)
 
         x = self.fc_1(x)
+        if not self.training:
+            x = torch.sigmoid(x)
         return x
 
 

@@ -3,16 +3,18 @@
 For each of the six databases used in the paper, every recording is
   - resampled to 500 Hz,
   - bandpass filtered 1-47 Hz (3rd-order Butterworth, zero-phase),
-and written to <out_dir>/WFDB_<database>/<record>.hea/.mat (the g*/ subfolders are flattened).
+and written to <data_root>/PhysioNet2021_preprocessed/WFDB_<database>/<record>.hea/.mat
+(the g*/ subfolders are flattened), the layout train_pipeline.py --data_root expects.
 Segmenting to 4096 samples and z-score normalisation happen at load time in data/data_loader.py.
 
 Signals stay in the original ADC units (int16), so the output takes about as much space as the
-input databases. Records that already exist in <out_dir> are skipped, so an interrupted run can
+input databases. Records that already exist in the output are skipped, so an interrupted run can
 be resumed.
 
 Usage:
-    python scripts/preprocess_data.py --cinc_dir ~/data/CinC-2021 --out_dir data/PhysioNet2021_preprocessed
-    python train_pipeline.py --data_dir data/PhysioNet2021_preprocessed ...
+    python scripts/preprocess_data.py --cinc_dir ~/physionet.org --data_root ~/ecg_data
+    python scripts/make_dataset_division.py --data_root ~/ecg_data
+    python train_pipeline.py --data_root ~/ecg_data ...
 """
 import argparse
 import glob
@@ -75,9 +77,10 @@ def process(job):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--cinc_dir', default=os.path.expanduser('~/data/CinC'),
+    parser.add_argument('--cinc_dir', required=True,
                         help='Raw CinC 2021 download (searched recursively for the database folders)')
-    parser.add_argument('--out_dir', default=os.path.join(REPO, 'data', 'PhysioNet2021_preprocessed'))
+    parser.add_argument('--data_root', required=True,
+                        help='Output root; recordings go to <data_root>/PhysioNet2021_preprocessed/WFDB_*')
     parser.add_argument('--workers', type=int, default=os.cpu_count())
     args = parser.parse_args()
 
@@ -91,7 +94,7 @@ def main():
         if source_dir is None:
             print(f'{target}: NOT FOUND under {cinc_dir} - skipped')
             continue
-        out = os.path.join(args.out_dir, target)
+        out = os.path.join(args.data_root, 'PhysioNet2021_preprocessed', target)
         os.makedirs(out, exist_ok=True)
         headers = sorted(glob.glob(os.path.join(source_dir, '**', '*.hea'), recursive=True))
         if len({os.path.basename(h) for h in headers}) != len(headers):

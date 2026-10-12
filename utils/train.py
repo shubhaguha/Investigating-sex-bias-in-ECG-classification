@@ -9,27 +9,16 @@ import torch
 import copy
 import torch.optim as optim
 
-
-def needs_lead_indicator(model):
-    # Unwrap nn.DataParallel so the check also works on multi-GPU runs
-    model = getattr(model, 'module', model)
-    return 'ResnetAttention' in model.__class__.__name__
-
-
 def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer, criterion, DEVICE, class_nr, experiment_ID = None):
     OUTPUT = []
 
     # Variables for early stopping
     best_loss = float('inf')
-    # At most two learning-rate reductions (1e-3 -> 1e-4 -> 1e-5), as in the paper
-    max_lr_reductions = 2
-    lr_reductions = 0
-    min_lr = optimizer.param_groups[0]['lr'] * 0.1 ** max_lr_reductions
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=patience,
-                                                     min_lr=min_lr * (1 - 1e-6))
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=patience)
 
     model_directory = 'results/model_weights/'
-    os.makedirs(model_directory, exist_ok=True)
+    if not os.path.isdir(model_directory):
+        os.mkdir(model_directory)
 
     writer = SummaryWriter(comment=str('_' + experiment_ID))
     # Ensure the model is moved to the DEVICE
@@ -44,7 +33,7 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
             local_labels = local_labels.float().to(DEVICE)
             lead_idx = lead_idx.float().to(DEVICE)
             # Run the forward pass
-            if needs_lead_indicator(model):
+            if 'ResnetAttention' in model.__class__.__name__:
                 local_batch = local_batch.unsqueeze(2).float().to(DEVICE)
                 outputs = model(local_batch, lead_idx).float()
             else:
@@ -83,7 +72,7 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
             # Run the forward
             model.eval()
             with torch.no_grad():
-                if needs_lead_indicator(model):
+                if 'ResnetAttention' in model.__class__.__name__:
                     val_local_batch = val_local_batch.unsqueeze(2).float().to(DEVICE)
                     val_outputs = model(val_local_batch, lead_idx).float()
                 else:
@@ -119,13 +108,6 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
                        'val_rocauc': val_roc_auc,
                        'val_loss': val_loss})
 
-        if val_loss < best_loss:
-            best_loss = val_loss
-            best_model_wts = copy.deepcopy(model.state_dict())
-            trigger_times = 0 # reset trigger times if loss improved
-        else:
-            trigger_times += 1
-
         rounded_loss = round(val_loss, 3)
         scheduler.step(rounded_loss)
         current_lr = optimizer.param_groups[0]['lr']
@@ -134,11 +116,17 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
             print(f"Learning rate decreased from {previous_lr} to {current_lr} !")
             model.load_state_dict(best_model_wts)
             trigger_times = 0
-            lr_reductions += 1
         previous_lr = current_lr
 
-        # Early stopping: no improvement for `patience` epochs after reaching the lowest learning rate
-        if lr_reductions >= max_lr_reductions and trigger_times >= patience:
+        if val_loss < best_loss:
+            best_loss = val_loss
+            best_model_wts = copy.deepcopy(model.state_dict())
+            trigger_times = 0 # reset trigger times if loss improved
+        else:
+            trigger_times += 1
+
+        # Early stopping
+        if optimizer.param_groups[0]['lr'] < 0.0001: #trigger_times >= patience and
             print('Early stopping at epoch {}'.format(epoch + 1))
             model.load_state_dict(best_model_wts)
             torch.save(model.state_dict(), model_directory + experiment_ID + '.pth')
@@ -175,7 +163,7 @@ def test_loop(model, test_loader, DEVICE, class_nr):
         lead_idx = lead_idx.float().to(DEVICE)
         # Run the forward pass
         with torch.no_grad():
-            if needs_lead_indicator(model):
+            if 'ResnetAttention' in model.__class__.__name__:
                 test_local_batch = test_local_batch.unsqueeze(2).float().to(DEVICE)
                 test_outputs = model(test_local_batch, lead_idx).float()
             else:
@@ -210,7 +198,6 @@ def test_loop(model, test_loader, DEVICE, class_nr):
     print([round(x, 2) for x in test_roc])
     print([round(x, 2) for x in p_roc_auc])
     print([round(x, 2) for x in pr_auc])
-    return TEST[0]
 
 
 

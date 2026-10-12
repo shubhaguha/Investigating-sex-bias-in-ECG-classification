@@ -3,8 +3,3 @@ __pycache__/
 .venv/
 results/
 runs/
-dummy_data/
-smoke_test/
-data/PhysioNet2021_preprocessed/
-slurm/logs/*
-!slurm/logs/.gitkeep
