@@ -68,6 +68,16 @@ python train_pipeline.py --data_root /path/to/ecg_data --model resnet_attention 
 
 Steps 1 and 2 recreate pieces that are not part of this repository: the preprocessed data folder and `dataset_division.json`. Preprocessing follows the CinC 2021 winning entry the paper builds on; the split follows Section 2.2, Figure 2 and Tables 3-4 of the paper (see `data/division.py`). Test results are printed at the end of training (ROC AUC, pROC AUC and PR AUC per class, for the female and then the male test set); weights and training history go to `results/model_weights/`.
 
+### On a SLURM cluster: best configuration only
+
+`slurm/` runs the paper's best configuration, ResNet with Attention trained on the sex-balanced set (F50), over the 5 cross-validation folds. Create a Python environment with `requirements.txt` (default location `~/venvs/ecg-sexbias`, set `VENV` to change it), adjust the `#SBATCH` lines for your cluster, then from the repository root:
+
+```bash
+bash slurm/submit_best.sh
+```
+
+This submits `slurm/prepare_data.sh` (CPU: preprocessing of `/home/sguha/physionet.org` into `/home/sguha/ecg_data`, then the split) and, once it succeeds, `slurm/train_best.sh` as a 5-task GPU array, one task per test fold. Set `CINC_DIR` or `DATA_ROOT` to use other paths. Each fold's test results are printed at the end of its log in `slurm/logs/`.
+
 ---
 
 ## Citation
