@@ -1,6 +1,6 @@
 #!/bin/bash
 # Submit the whole run, each step starting only after the previous one succeeded:
-#   bash slurm/submit_best.sh              data preparation, then training folds 0-4
+#   bash slurm/submit_best.sh              data preparation, training folds 0-4, resource report
 #   bash slurm/submit_best.sh --download   download first (see slurm/download_data.sh)
 # Run from the repository root.
 set -euo pipefail
@@ -12,5 +12,6 @@ if [[ "${1:-}" == "--download" ]]; then
 fi
 prep=$(sbatch --parsable ${dependency[@]+"${dependency[@]}"} slurm/prepare_data.sh)
 train=$(sbatch --parsable --dependency=afterok:"$prep" slurm/train_best.sh)
-echo "Submitted data preparation ($prep) and training folds 0-4 ($train)"
+report=$(sbatch --parsable --dependency=afterany:"$train" slurm/report.sh "$train")
+echo "Submitted data preparation ($prep), training folds 0-4 ($train) and the resource report ($report)"
 echo "Logs: slurm/logs/"

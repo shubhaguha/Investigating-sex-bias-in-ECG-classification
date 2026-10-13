@@ -8,7 +8,9 @@
 #   sbatch --array=3 slurm/train_best.sh       (re-run a single fold)
 #
 # Test results (ROC AUC, pROC AUC, PR AUC for AF, SR, MI; female test set first, then male) are
-# printed at the end of each log in slurm/logs/. Weights go to results/model_weights/.
+# printed at the end of each log in slurm/logs/. Weights go to results/model_weights/. Each run also
+# writes results/<experiment>/: test_metrics.json, resources.json (time per phase, peak GPU and host
+# memory) and gpu_usage.csv (nvidia-smi every 30 s); see slurm/report.sh.
 
 #SBATCH --job-name=ecg-best
 #SBATCH --array=0-4
@@ -41,6 +43,15 @@ fi
 
 echo "$EXPERIMENT on $(hostname), started $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null || echo "No GPU visible"
+
+# Sample GPU utilization and memory while training runs
+mkdir -p "results/$EXPERIMENT"
+if command -v nvidia-smi >/dev/null; then
+    nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,memory.total --format=csv,nounits \
+        -l 30 > "results/$EXPERIMENT/gpu_usage.csv" &
+    monitor=$!
+    trap 'kill "$monitor" 2>/dev/null || true' EXIT
+fi
 
 python train_pipeline.py \
     --data_root "$DATA_ROOT" \
