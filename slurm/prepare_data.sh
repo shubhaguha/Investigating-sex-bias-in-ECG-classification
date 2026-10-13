@@ -14,8 +14,8 @@
 
 set -euo pipefail
 
-CINC_DIR="${CINC_DIR:-/home/sguha/physionet.org}"
-DATA_ROOT="${DATA_ROOT:-/home/sguha/ecg_data}"
+CINC_DIR="${CINC_DIR:-$HOME/physionet.org}"
+DATA_ROOT="${DATA_ROOT:-$HOME/ecg_data}"
 VENV="${VENV:-$HOME/venvs/ecg-sexbias}"    # set VENV= to skip activation (e.g. when using conda)
 # module load Python/3.11                   # cluster-specific environment setup goes here
 

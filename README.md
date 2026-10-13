@@ -70,13 +70,20 @@ Steps 1 and 2 recreate pieces that are not part of this repository: the preproce
 
 ### On a SLURM cluster: best configuration only
 
-`slurm/` runs the paper's best configuration, ResNet with Attention trained on the sex-balanced set (F50), over the 5 cross-validation folds. Create a Python environment with `requirements.txt` (default location `~/venvs/ecg-sexbias`, set `VENV` to change it), adjust the `#SBATCH` lines for your cluster, then from the repository root:
+`slurm/` runs the paper's best configuration, ResNet with Attention trained on the sex-balanced set (F50), over the 5 cross-validation folds. Create a Python environment with `requirements.txt` (default location `$HOME/venvs/ecg-sexbias`, set `VENV` to change it), adjust the `#SBATCH` lines for your cluster, then from the repository root:
 
 ```bash
-bash slurm/submit_best.sh
+bash slurm/submit_best.sh --download   # download, preprocess + split, train
+bash slurm/submit_best.sh              # if the data is already in $HOME/physionet.org
 ```
 
-This submits `slurm/prepare_data.sh` (CPU: preprocessing of `/home/sguha/physionet.org` into `/home/sguha/ecg_data`, then the split) and, once it succeeds, `slurm/train_best.sh` as a 5-task GPU array, one task per test fold. Set `CINC_DIR` or `DATA_ROOT` to use other paths. Each fold's test results are printed at the end of its log in `slurm/logs/`.
+Each step starts only after the previous one succeeded:
+
+1. `slurm/download_data.sh` downloads the six databases the paper uses into `$HOME/physionet.org/files/challenge-2021/1.0.3/` (the same tree as `wget -r -N -c -np https://physionet.org/files/challenge-2021/1.0.3/` run from `$HOME`), with one `wget` per subfolder, 8 at a time (`PARALLEL`). Files already downloaded are reused, and the job only succeeds once all 87,663 recordings are complete; resubmit it to resume. Stop any other download into the same folder first. Many clusters have no internet access on compute nodes: use a partition that does, or run `bash slurm/download_data.sh` on a login node.
+2. `slurm/prepare_data.sh` (CPU) preprocesses `$HOME/physionet.org` into `$HOME/ecg_data` and creates the split.
+3. `slurm/train_best.sh` trains as a 5-task GPU array, one task per test fold.
+
+Set `DOWNLOAD_DIR`, `CINC_DIR` or `DATA_ROOT` to use other paths. Each fold's test results are printed at the end of its log in `slurm/logs/`.
 
 ---
 
