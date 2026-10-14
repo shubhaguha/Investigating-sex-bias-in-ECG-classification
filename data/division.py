@@ -31,12 +31,8 @@ from collections import defaultdict
 import numpy as np
 from sklearn.model_selection import StratifiedGroupKFold
 
-from data.data_loader import dataset, dataset_labels, find_challenge_files
+from data.data_loader import dataset, find_challenge_files
 from data.preprocessing import SOURCES
-
-# data_loader.dataset_paths keys for each folder (CPSC and CPSC-Extra share a source label)
-FOLDER_SOURCE = {'WFDB_PTBXL': 'ptbxl', 'WFDB_CPSC2018': 'cpsc', 'WFDB_CPSC2018_2': 'cpsc_2',
-                 'WFDB_Ga': 'ga', 'WFDB_ChapmanShaoxing': 'chapman', 'WFDB_Ningbo': 'ningbo'}
 
 RATIOS = ['100_0', '75_25', '50_50', '25_75', '0_100']  # male_female, in percent
 TARGET_CODES = ['164889003', '426783006', '164865005']  # AF, SR, MI (after merging equivalent classes)
@@ -60,12 +56,12 @@ def load_metadata(header_files):
     """AF/SR/MI label matrix, sex, age and source dataset of every recording, parsed as during training.
 
     The source is the dataset label from data_loader.dataset_labels (CPSC and CPSC-Extra share one),
-    looked up from the WFDB_* folder name.
+    which data_loader.get_class_source looks up from the WFDB_* folder name.
     """
     ds = dataset(header_files, length=4096, nr_leads=12, equivalent_cl='sinus_mi')
     cols = [dataset.classes.index(c) for c in TARGET_CODES]
     labels = np.stack(ds.files['target'].to_list())[:, cols].astype(int)
-    sources = [dataset_labels[FOLDER_SOURCE[os.path.basename(os.path.dirname(h))]] for h in header_files]
+    sources = ds.files['source'].tolist()
     return labels, ds.files['sex'].tolist(), ds.files['age'].tolist(), sources
 
 
