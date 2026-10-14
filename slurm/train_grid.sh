@@ -45,6 +45,13 @@ if [[ -n "$VENV" ]]; then
     source "$VENV/bin/activate"
 fi
 
+# A run that already finished (test results written) is not trained again: a resubmitted array, or
+# a grid task that train_best.sh already ran (50_50, fold 0, seed 42), exits here.
+if [[ -f "results/$EXPERIMENT/test_metrics.json" ]]; then
+    echo "$EXPERIMENT already finished (results/$EXPERIMENT/test_metrics.json exists); skipping. Delete it to retrain."
+    exit 0
+fi
+
 echo "$EXPERIMENT on $(hostname), started $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null || echo "No GPU visible"
 

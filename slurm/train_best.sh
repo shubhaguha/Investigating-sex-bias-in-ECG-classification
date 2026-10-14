@@ -30,8 +30,9 @@ VENV="${VENV-$HOME/venvs/ecg-sexbias}"    # set VENV= to skip activation (e.g. w
 
 MODEL=resnet_attention
 RATIO=50_50
+SEED=42                                     # train_pipeline.py's default; named so train_grid.sh can reuse fold 0
 FOLD="${SLURM_ARRAY_TASK_ID:?run with sbatch (or set SLURM_ARRAY_TASK_ID to 0-4)}"
-EXPERIMENT="${MODEL}_${RATIO}_fold${FOLD}"
+EXPERIMENT="${MODEL}_${RATIO}_fold${FOLD}_seed${SEED}"
 
 cd "${SLURM_SUBMIT_DIR:-$(pwd)}"
 [[ -f train_pipeline.py ]] || { echo "Submit from the repository root" >&2; exit 1; }
@@ -39,6 +40,13 @@ cd "${SLURM_SUBMIT_DIR:-$(pwd)}"
 if [[ -n "$VENV" ]]; then
     # shellcheck disable=SC1091
     source "$VENV/bin/activate"
+fi
+
+# A run that already finished (test results written) is not trained again: a resubmitted array, or
+# a grid task that train_best.sh already ran (50_50, fold 0, seed 42), exits here.
+if [[ -f "results/$EXPERIMENT/test_metrics.json" ]]; then
+    echo "$EXPERIMENT already finished (results/$EXPERIMENT/test_metrics.json exists); skipping. Delete it to retrain."
+    exit 0
 fi
 
 echo "$EXPERIMENT on $(hostname), started $(date)"
@@ -58,6 +66,7 @@ python train_pipeline.py \
     --model "$MODEL" \
     --sex_ratio "$RATIO" \
     --fold "$FOLD" \
+    --seed "$SEED" \
     --experiment_id "$EXPERIMENT" \
     --gpu 0
 

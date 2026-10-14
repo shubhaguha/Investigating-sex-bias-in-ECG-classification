@@ -87,7 +87,7 @@ Set `DOWNLOAD_DIR`, `CINC_DIR` or `DATA_ROOT` to use other paths. Each fold's te
 
 ### On a SLURM cluster: 3 sex ratios x 3 seeds
 
-`slurm/train_grid.sh` trains ResNet with Attention on F0, F50 and F100 with seeds 42, 43 and 44, on test fold 0 (`FOLD` to change it), as a 9-task GPU array:
+`slurm/train_grid.sh` trains ResNet with Attention on F0, F50 and F100 with seeds 42, 43 and 44, on test fold 0 (`FOLD` to change it), as a 9-task GPU array. A run whose test results already exist is skipped, so after `submit_best.sh` the grid does not retrain F50 with seed 42 on fold 0, and resubmitting either job only reruns what did not finish:
 
 ```bash
 bash slurm/submit_grid.sh --no-prep    # data already prepared: train, then report
