@@ -100,7 +100,7 @@ def get_leads(header):
 def get_age(header):
     age = None
     for l in header.split('\n'):
-        if l.startswith('#Age'):
+        if l.startswith('#Age') or l.startswith('# Age'):
             try:
                 age = float(l.split(': ')[1].strip())
             except:
@@ -111,7 +111,7 @@ def get_age(header):
 def get_sex(header):
     sex = None
     for l in header.split('\n'):
-        if l.startswith('#Sex'):
+        if l.startswith('#Sex') or l.startswith('# Sex'):
             try:
                 sex = l.split(': ')[1].strip()
             except:
@@ -161,7 +161,7 @@ def get_num_samples(header):
 def get_labels(header, classes_to_skip):
     labels = list()
     for l in header.split('\n'):
-        if l.startswith('#Dx'):
+        if l.startswith('#Dx') or l.startswith('# Dx'):
             try:
                 entries = l.split(': ')[1].split(',')
                 for entry in entries:
@@ -180,23 +180,20 @@ dataset_labels = {
     "ningbo":4
 }
 
+# Folder of each source dataset inside PhysioNet2021_preprocessed/, matched by name so the data can live anywhere
 dataset_paths = {
-    "ptbxl": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_PTBXL',
-    "cpsc": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_CPSC2018',
-    "cpsc_2": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_CPSC2018_2',
-    "ga": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_Ga',
-    "chapman": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_ChapmanShaoxing',
-    "ningbo": '/home/maria/data/PhysioNet2021_preprocessed/WFDB_Ningbo'
+    "ptbxl": 'WFDB_PTBXL',
+    "cpsc": 'WFDB_CPSC2018',
+    "cpsc_2": 'WFDB_CPSC2018_2',
+    "ga": 'WFDB_Ga',
+    "chapman": 'WFDB_ChapmanShaoxing',
+    "ningbo": 'WFDB_Ningbo'
 }
 def get_class_source(file_path):
+    folder = os.path.basename(os.path.dirname(file_path))
     for dataset, paths in dataset_paths.items():
-        if isinstance(paths, list):
-            for path in paths:
-                if file_path.startswith(path):
-                    return dataset_labels[dataset]
-        else:
-            if file_path.startswith(paths):
-                return dataset_labels[dataset]
+        if folder in (paths if isinstance(paths, list) else [paths]):
+            return dataset_labels[dataset]
     return None  # Return None if no match is found
 
 def get_nsamp(header):

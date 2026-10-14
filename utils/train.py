@@ -72,7 +72,7 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
             # Run the forward
             model.eval()
             with torch.no_grad():
-                if 'ModelCinc' in model.__class__.__name__:
+                if 'ResnetAttention' in model.__class__.__name__:
                     val_local_batch = val_local_batch.unsqueeze(2).float().to(DEVICE)
                     val_outputs = model(val_local_batch, lead_idx).float()
                 else:
@@ -181,8 +181,8 @@ def test_loop(model, test_loader, DEVICE, class_nr):
     for i in range(class_nr):
         if len(np.unique(labels[:, i])) > 1:
             test_roc.append(roc_auc_score(labels[:, i], outputs[:, i]))
-            p_roc_auc = roc_auc_score(labels[:, i], outputs[:, i], max_fpr=0.2)
-            pr_auc = average_precision_score(labels[:, i], outputs[:, i])
+            p_roc_auc.append(roc_auc_score(labels[:, i], outputs[:, i], max_fpr=0.2))
+            pr_auc.append(average_precision_score(labels[:, i], outputs[:, i]))
         else:
             test_roc.append(1)
             p_roc_auc.append(1)
