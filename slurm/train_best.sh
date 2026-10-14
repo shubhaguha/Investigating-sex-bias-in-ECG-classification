@@ -14,13 +14,13 @@
 
 #SBATCH --job-name=ecg-best
 #SBATCH --array=0-4
-#SBATCH --gres=gpu:1
+#SBATCH --gpus=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=24:00:00
 #SBATCH --output=slurm/logs/%x_%A_fold%a.out
-##SBATCH --partition=gpu
-##SBATCH --account=my_account
+#SBATCH --partition=gpu_a100
+#SBATCH --account=gusr58922
 
 set -euo pipefail
 

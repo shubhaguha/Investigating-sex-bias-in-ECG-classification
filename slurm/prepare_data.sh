@@ -11,6 +11,11 @@
 #SBATCH --mem=32G
 #SBATCH --time=06:00:00
 #SBATCH --output=slurm/logs/%x_%j.out
+# The gusr58922 budget has no CPU partition (rome is refused), so this CPU job runs on a GPU node.
+# With a CPU budget, use that partition instead and drop --gpus.
+#SBATCH --partition=gpu_a100
+#SBATCH --gpus=1
+#SBATCH --account=gusr58922
 
 set -euo pipefail
 
