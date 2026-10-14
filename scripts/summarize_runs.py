@@ -1,7 +1,8 @@
-"""Summarize the runs in results/: runtime, memory and test ROC AUC per run, and the mean over seeds.
+"""Summarize the runs in results/: runtime, memory, disk usage and test ROC AUC per run, and the mean over seeds.
 
 Reads results/<experiment>/{args,resources,test_metrics}.json and gpu_usage.csv, written by
-train_pipeline.py and the slurm/train_*.sh jobs. Writes results/summary.csv.
+train_pipeline.py and the slurm/train_*.sh jobs, and measures what each run left on disk. Writes
+results/summary.csv.
 
     python scripts/summarize_runs.py [--results_dir results]
 """
@@ -39,6 +40,29 @@ def gpu_usage(path):
     return round(statistics.mean(util)), round(max(memory))
 
 
+def size_mb(path):
+    """Disk usage of a file or directory tree, in MB."""
+    if os.path.isfile(path):
+        return os.path.getsize(path) / 2 ** 20
+    total = 0
+    for root, _, files in os.walk(path):
+        total += sum(os.path.getsize(os.path.join(root, f)) for f in files)
+    return total / 2 ** 20
+
+
+def disk_usage(run_dir):
+    """Size of the saved weights and of everything a run wrote (results dir, weights, history, TensorBoard logs)."""
+    results_dir = os.path.dirname(run_dir)
+    experiment = os.path.basename(run_dir)
+    weights = os.path.join(results_dir, 'model_weights', f'{experiment}.pth')
+    weights_mb = size_mb(weights) if os.path.isfile(weights) else None
+    paths = [run_dir, weights, os.path.join(results_dir, 'model_weights', f'PROGRESS_{experiment}.pickle')]
+    # SummaryWriter(comment='_' + experiment) logs to runs/<date>_<host>_<experiment>
+    paths += glob.glob(os.path.join('runs', f'*_{experiment}'))
+    total_mb = sum(size_mb(p) for p in paths if os.path.exists(p))
+    return (round(weights_mb, 1) if weights_mb is not None else None), round(total_mb, 1)
+
+
 def summarize(run_dir):
     args = load_json(os.path.join(run_dir, 'args.json'))
     resources = load_json(os.path.join(run_dir, 'resources.json'))
@@ -46,6 +70,7 @@ def summarize(run_dir):
         return None
     seconds = resources['seconds']
     gpu_util, gpu_memory_used = gpu_usage(os.path.join(run_dir, 'gpu_usage.csv'))
+    weights_mb, disk_mb = disk_usage(run_dir)
     row = {
         'experiment': os.path.basename(run_dir),
         'model': args['model'], 'sex_ratio': args['sex_ratio'], 'fold': args['fold'], 'seed': args['seed'],
@@ -59,6 +84,8 @@ def summarize(run_dir):
         'peak_gpu_used_gb': round(gpu_memory_used / 1024, 1) if gpu_memory_used is not None else None,
         'mean_gpu_util_pct': gpu_util,
         'peak_host_memory_gb': round(resources['peak_host_memory_mb'] / 1024, 1),
+        'weights_mb': weights_mb,
+        'disk_mb': disk_mb,
     }
     metrics = load_json(os.path.join(run_dir, 'test_metrics.json'))
     for sex in ['female', 'male']:
@@ -87,9 +114,11 @@ def main():
     # ratios are male_female; order by female share (F0, F25, ..., F100)
     rows.sort(key=lambda r: (r['model'], int(r['sex_ratio'].split('_')[1]), r['fold'], r['seed']))
 
-    print('Runtime and memory per run')
+    print('Runtime, memory and disk usage per run')
     print_table(rows, ['experiment', 'gpu', 'epochs', 'total_min', 'load_min', 'train_min', 'mean_epoch_min',
-                       'peak_gpu_allocated_gb', 'peak_gpu_used_gb', 'mean_gpu_util_pct', 'peak_host_memory_gb'])
+                       'peak_gpu_allocated_gb', 'peak_gpu_used_gb', 'mean_gpu_util_pct', 'peak_host_memory_gb',
+                       'weights_mb', 'disk_mb'])
+    print(f"Total disk used by these runs: {sum(r['disk_mb'] for r in rows) / 1024:.2f} GB")
     print()
 
     auc_columns = [f'auc_{name}_{sex}' for sex in ['female', 'male'] for name in CLASSES]
