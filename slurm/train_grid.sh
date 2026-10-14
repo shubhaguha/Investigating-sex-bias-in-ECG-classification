@@ -25,7 +25,7 @@
 set -euo pipefail
 
 DATA_ROOT="${DATA_ROOT:-$HOME/ecg_data}"
-VENV="${VENV:-$HOME/venvs/ecg-sexbias}"    # set VENV= to skip activation (e.g. when using conda)
+VENV="${VENV-$HOME/venvs/ecg-sexbias}"    # set VENV= to skip activation (e.g. when using conda)
 # module load CUDA/12.1                     # cluster-specific environment setup goes here
 
 MODEL=resnet_attention

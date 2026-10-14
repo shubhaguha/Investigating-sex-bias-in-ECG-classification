@@ -94,9 +94,9 @@ bash slurm/submit_grid.sh --no-prep    # data already prepared: train, then repo
 bash slurm/submit_grid.sh              # prepare the data first (add --download to download it too)
 ```
 
-### Runtime and memory
+### Runtime, memory and disk usage
 
-Every training run writes `results/<experiment>/resources.json` (time to load the data, train and test; epochs and mean time per epoch; peak GPU memory from PyTorch; peak host memory), `test_metrics.json` and, under SLURM, `gpu_usage.csv` (GPU utilization and memory from `nvidia-smi` every 30 s). Each epoch's time and peak memory are also printed in the log. Both submit scripts queue `slurm/report.sh` to run after training: it prints SLURM's accounting for the jobs (`sacct`: wall time, CPU time, peak memory) and `scripts/summarize_runs.py`'s tables (runtime and memory per run, test ROC AUC as mean ± SD over seeds), and writes `results/summary.csv`. Run `bash slurm/report.sh <job id>` by hand at any time.
+Every training run writes `results/<experiment>/resources.json` (time to load the data, train and test; epochs and mean time per epoch; peak GPU memory from PyTorch; peak host memory), `test_metrics.json` and, under SLURM, `gpu_usage.csv` (GPU utilization and memory from `nvidia-smi` every 30 s). Each epoch's time and peak memory are also printed in the log. Both submit scripts queue `slurm/report.sh` to run after training. It prints SLURM's accounting for the jobs (`sacct`: wall time, CPU time, peak memory, data read and written), the size and file count of the download, the preprocessed data, `results/`, `runs/` (TensorBoard), `slurm/logs/` and the Python environment, free space (`df`, and `quota` where available), and `scripts/summarize_runs.py`'s tables: runtime, memory and disk usage per run (weights and everything the run wrote), and test ROC AUC as mean ± SD over seeds. It also writes `results/summary.csv`. Run `bash slurm/report.sh <job id>` by hand at any time.
 
 ---
 
