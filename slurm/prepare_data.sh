@@ -7,13 +7,13 @@
 # Re-running skips recordings that are already preprocessed and keeps an existing split file.
 
 #SBATCH --job-name=ecg-prepare
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=9
 #SBATCH --mem=32G
 #SBATCH --time=06:00:00
 #SBATCH --output=slurm/logs/%x_%j.out
-# The gusr58922 budget has no CPU partition (rome is refused), so this CPU job runs on a GPU node.
-# With a CPU budget, use that partition instead and drop --gpus.
-#SBATCH --partition=gpu_a100
+# The gusr58922 budget has no CPU compute partition, so this CPU job takes the cheapest GPU
+# allocation: one A100 MIG slice, which comes with 9 cores and 60 GB.
+#SBATCH --partition=gpu_mig
 #SBATCH --gpus=1
 #SBATCH --account=gusr58922
 
