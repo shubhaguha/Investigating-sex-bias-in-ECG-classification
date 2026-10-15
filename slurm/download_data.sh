@@ -19,15 +19,16 @@
 # --missing instead reads each g* folder's listing (one request per folder), compares it with the
 # files on disk, and downloads only the .hea/.mat files that are not there yet.
 #
-# Compute nodes on many clusters have no internet access: use a partition that does (often called
-# "transfer" or "io"), or run it with bash on a login node.
+# Compute nodes on many clusters have no internet access: use a partition meant for data transfer
+# (staging on Snellius, often "transfer" or "io" elsewhere), or run it with bash on a login node.
 
 #SBATCH --job-name=ecg-download
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=4G
 #SBATCH --time=2-00:00:00
 #SBATCH --output=slurm/logs/%x_%j.out
-#SBATCH --partition=cbuild                 # CPU partition with internet access on this cluster
+# staging: Snellius's partition for data transfers
+#SBATCH --partition=staging
 #SBATCH --account=gusr58922
 
 set -euo pipefail
