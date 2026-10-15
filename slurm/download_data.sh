@@ -3,6 +3,8 @@
 #
 #   sbatch slurm/download_data.sh       (from the repository root; see slurm/submit_best.sh)
 #   bash slurm/download_data.sh         (also works without SLURM, e.g. in tmux on a login node)
+#   bash slurm/download_data.sh --missing
+#                                       (after a partial download: fetch only the missing files)
 #
 # A plain `wget -r` fetches ~176,000 small files one after the other, so it is slow because of the
 # per-request round trips, not the bandwidth. This job runs one wget per g* subfolder, PARALLEL at a
@@ -13,6 +15,10 @@
 # so files from an earlier or interrupted download are reused. Stop any wget still writing there
 # first. Resubmitting resumes; the job fails until every recording has its .hea and .mat file.
 #
+# Resuming re-checks every file already downloaded (one request each), which takes hours.
+# --missing instead reads each g* folder's listing (one request per folder), compares it with the
+# files on disk, and downloads only the .hea/.mat files that are not there yet.
+#
 # Compute nodes on many clusters have no internet access: use a partition that does (often called
 # "transfer" or "io"), or run it with bash on a login node.
 
@@ -21,9 +27,18 @@
 #SBATCH --mem=4G
 #SBATCH --time=2-00:00:00
 #SBATCH --output=slurm/logs/%x_%j.out
-##SBATCH --partition=transfer
+#SBATCH --partition=cbuild                 # CPU partition with internet access on this cluster
+#SBATCH --account=gusr58922
 
 set -euo pipefail
+
+MISSING_ONLY=false
+if [[ "${1:-}" == "--missing" ]]; then
+    MISSING_ONLY=true
+elif [[ -n "${1:-}" ]]; then
+    echo "Usage: $0 [--missing]" >&2
+    exit 2
+fi
 
 DOWNLOAD_DIR="${DOWNLOAD_DIR:-$HOME}"
 PARALLEL="${PARALLEL:-8}"              # concurrent wget processes; keep it modest towards physionet.org
@@ -56,9 +71,31 @@ for db in "${DATABASES[@]}"; do
     fi
 done
 
-# wget exits non-zero for a few failed files; the check below decides whether the download is complete
-# shellcheck disable=SC2016
-printf '%s\n' "${folders[@]}" | xargs -P "$PARALLEL" -n 1 sh -c 'wget $WGET_OPTS "$0" || echo "wget reported errors for $0"'
+if $MISSING_ONLY; then
+    # File URLs listed on the server whose local copy (same tree as wget -r) does not exist
+    missing_list="$DOWNLOAD_DIR/.challenge-2021-missing.txt"
+    : > "$missing_list"
+    for folder in "${folders[@]}"; do
+        if [[ ! "$folder" =~ /g[0-9]+/$ ]]; then
+            echo "  ${folder}: no subfolder listing, run without --missing for this database" >&2
+            continue
+        fi
+        listing=$(wget -q --tries=5 --timeout=60 -O - "$folder") || { echo "  could not list $folder" >&2; continue; }
+        local_dir="$DOWNLOAD_DIR/${folder#*://}"
+        { grep -oE 'href="[^"]*\.(hea|mat)"' <<< "$listing" || true; } | sed -E 's/^href="(.*\/)?//; s/"$//' | sort -u |
+            while read -r name; do
+                [[ -f "$local_dir$name" ]] || echo "$folder$name"
+            done >> "$missing_list"
+    done
+    echo "$(wc -l < "$missing_list") files to download (list: $missing_list)"
+    # -x recreates the host/path folders, so files land where wget -r puts them
+    xargs -P "$PARALLEL" -n 50 wget -x -c --no-verbose --tries=20 --waitretry=10 --timeout=60 \
+        < "$missing_list" || echo "wget reported errors; the check below counts what is still missing"
+else
+    # wget exits non-zero for a few failed files; the check below decides whether the download is complete
+    # shellcheck disable=SC2016
+    printf '%s\n' "${folders[@]}" | xargs -P "$PARALLEL" -n 1 sh -c 'wget $WGET_OPTS "$0" || echo "wget reported errors for $0"'
+fi
 
 # Check that every recording has both files
 root="$DOWNLOAD_DIR/${BASE_URL#*://}/training"
@@ -73,7 +110,7 @@ for db in "${DATABASES[@]}"; do
     (( complete >= EXPECTED[$db] )) || missing=$((missing + EXPECTED[$db] - complete))
 done
 if (( missing > 0 )); then
-    echo "$missing recordings still missing; resubmit to resume ($(date))" >&2
+    echo "$missing recordings still missing; run again (with --missing to fetch only those) ($(date))" >&2
     exit 1
 fi
 echo "Download complete ($(date))"
