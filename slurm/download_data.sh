@@ -17,7 +17,8 @@
 #
 # Resuming re-checks every file already downloaded (one request each), which takes hours.
 # --missing instead reads each g* folder's listing (one request per folder), compares it with the
-# files on disk, and downloads only the .hea/.mat files that are not there yet.
+# files on disk, and downloads only the .hea/.mat files that are not there yet, plus any .mat that an
+# interrupted download left damaged (wrong size for its header; see scripts/check_download.py).
 #
 # Compute nodes on many clusters have no internet access: use a partition meant for data transfer
 # (staging on Snellius, often "transfer" or "io" elsewhere), or run it with bash on a login node.
@@ -53,6 +54,10 @@ declare -A EXPECTED=(
 DATABASES=(ptb-xl cpsc_2018 cpsc_2018_extra georgia chapman_shaoxing ningbo)
 
 export WGET_OPTS="-r -N -c -np --no-verbose --tries=20 --waitretry=10 --timeout=60"
+CHECK="${SLURM_SUBMIT_DIR:-$(pwd)}/scripts/check_download.py"
+[[ -f "$CHECK" ]] || { echo "Run from the repository root ($CHECK not found)" >&2; exit 1; }
+command -v python3 >/dev/null || { echo "python3 not found (needed by $CHECK)" >&2; exit 1; }
+root="$DOWNLOAD_DIR/${BASE_URL#*://}/training"   # where wget -r puts the databases
 mkdir -p "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
 echo "Downloading into $DOWNLOAD_DIR with $PARALLEL parallel downloads ($(date))"
@@ -88,7 +93,14 @@ if $MISSING_ONLY; then
                 [[ -f "$local_dir$name" ]] || echo "$folder$name"
             done >> "$missing_list"
     done
-    echo "$(wc -l < "$missing_list") files to download (list: $missing_list)"
+    # .mat files that exist but do not match their header: delete them and fetch them again
+    damaged=0
+    while read -r mat_file; do
+        rm -f "$mat_file"
+        echo "$BASE_URL/training/${mat_file#"$root"/}"
+        damaged=$((damaged + 1))
+    done < <(python3 -I "$CHECK" --list-bad "$root" "${DATABASES[@]}") >> "$missing_list"
+    echo "$(wc -l < "$missing_list") files to download, $damaged of them replacing damaged .mat files (list: $missing_list)"
     # -x recreates the host/path folders, so files land where wget -r puts them
     xargs -P "$PARALLEL" -n 50 wget -x -c --no-verbose --tries=20 --waitretry=10 --timeout=60 \
         < "$missing_list" || echo "wget reported errors; the check below counts what is still missing"
@@ -98,20 +110,16 @@ else
     printf '%s\n' "${folders[@]}" | xargs -P "$PARALLEL" -n 1 sh -c 'wget $WGET_OPTS "$0" || echo "wget reported errors for $0"'
 fi
 
-# Check that every recording has both files
-root="$DOWNLOAD_DIR/${BASE_URL#*://}/training"
+# Check that every recording has its .hea and a .mat of the size the header describes
+counts=$(python3 -I "$CHECK" "$root" "${DATABASES[@]}")
 missing=0
-echo "Recordings downloaded (.hea with matching .mat / expected):"
-for db in "${DATABASES[@]}"; do
-    complete=0
-    if [[ -d "$root/$db" ]]; then
-        complete=$(find "$root/$db" -name '*.hea' | while read -r h; do [[ -f "${h%.hea}.mat" ]] && echo; done | wc -l)
-    fi
+echo "Recordings downloaded (.hea with intact .mat / expected):"
+while read -r db complete; do
     echo "  $db: $complete / ${EXPECTED[$db]}"
     (( complete >= EXPECTED[$db] )) || missing=$((missing + EXPECTED[$db] - complete))
-done
+done <<< "$counts"
 if (( missing > 0 )); then
-    echo "$missing recordings still missing; run again (with --missing to fetch only those) ($(date))" >&2
+    echo "$missing recordings missing or damaged; run again (with --missing to fetch only those) ($(date))" >&2
     exit 1
 fi
 echo "Download complete ($(date))"
