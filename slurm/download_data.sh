@@ -18,7 +18,8 @@
 # Resuming re-checks every file already downloaded (one request each), which takes hours.
 # --missing instead reads each g* folder's listing (one request per folder), compares it with the
 # files on disk, and downloads only the .hea/.mat files that are not there yet, plus any .mat that an
-# interrupted download left damaged (wrong size for its header; see scripts/check_download.py).
+# interrupted download left damaged (not the file its .hea describes, or the .hea itself broken;
+# see scripts/check_download.py).
 #
 # Compute nodes on many clusters have no internet access: use a partition meant for data transfer
 # (staging on Snellius, often "transfer" or "io" elsewhere), or run it with bash on a login node.
@@ -93,14 +94,14 @@ if $MISSING_ONLY; then
                 [[ -f "$local_dir$name" ]] || echo "$folder$name"
             done >> "$missing_list"
     done
-    # .mat files that exist but do not match their header: delete them and fetch them again
+    # damaged files (a .mat that does not match its header, or a broken .hea): delete and fetch again
     damaged=0
-    while read -r mat_file; do
-        rm -f "$mat_file"
-        echo "$BASE_URL/training/${mat_file#"$root"/}"
+    while read -r bad_file; do
+        rm -f "$bad_file"
+        echo "$BASE_URL/training/${bad_file#"$root"/}"
         damaged=$((damaged + 1))
     done < <(python3 -I "$CHECK" --list-bad "$root" "${DATABASES[@]}") >> "$missing_list"
-    echo "$(wc -l < "$missing_list") files to download, $damaged of them replacing damaged .mat files (list: $missing_list)"
+    echo "$(wc -l < "$missing_list") files to download, $damaged of them replacing damaged files (list: $missing_list)"
     # -x recreates the host/path folders, so files land where wget -r puts them
     xargs -P "$PARALLEL" -n 50 wget -x -c --no-verbose --tries=20 --waitretry=10 --timeout=60 \
         < "$missing_list" || echo "wget reported errors; the check below counts what is still missing"
