@@ -67,7 +67,8 @@ python train_pipeline.py \
     --sex_ratio "$RATIO" \
     --fold "$FOLD" \
     --seed "$SEED" \
-    --experiment_id "$EXPERIMENT" \
-    --gpu 0
+    --experiment_id "$EXPERIMENT"
+# no --gpu: "--gpu 0" parses as the list [0], which makes train_pipeline.py wrap the model in
+# DataParallel, and utils/train.py then no longer recognises ResnetAttention; the default is GPU 0
 
 echo "Finished $(date)"
