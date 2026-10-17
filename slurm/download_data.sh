@@ -95,12 +95,19 @@ if $MISSING_ONLY; then
             done >> "$missing_list"
     done
     # damaged files (a .mat that does not match its header, or a broken .hea): delete and fetch again
-    damaged=0
+    bad_list="$DOWNLOAD_DIR/.challenge-2021-damaged.txt"
+    python3 -I "$CHECK" --list-bad "$root" "${DATABASES[@]}" > "$bad_list"
+    damaged=$(wc -l < "$bad_list")
+    # An interrupted download damages a handful of files; thousands means the check itself is wrong
+    if (( damaged > ${MAX_DAMAGED:-1000} )); then
+        echo "$damaged files look damaged (list: $bad_list); not deleting that many." >&2
+        echo "Check a few of them by hand; set MAX_DAMAGED=$damaged to replace them all anyway." >&2
+        exit 1
+    fi
     while read -r bad_file; do
         rm -f "$bad_file"
         echo "$BASE_URL/training/${bad_file#"$root"/}"
-        damaged=$((damaged + 1))
-    done < <(python3 -I "$CHECK" --list-bad "$root" "${DATABASES[@]}") >> "$missing_list"
+    done < "$bad_list" >> "$missing_list"
     echo "$(wc -l < "$missing_list") files to download, $damaged of them replacing damaged files (list: $missing_list)"
     # -x recreates the host/path folders, so files land where wget -r puts them
     xargs -P "$PARALLEL" -n 50 wget -x -c --no-verbose --tries=20 --waitretry=10 --timeout=60 \
