@@ -12,6 +12,7 @@ from models.cnn import *
 from fastai.vision.models.xresnet import xresnet101
 from utils.train import *
 from utils.focal_loss import *
+from utils.resources import ResourceLog
 import numpy as np
 
 
@@ -104,6 +105,7 @@ def main():
     set_seed(args["seed"])
     results_dir = setup_directories(args["experiment_id"])
     save_args(args, results_dir)
+    resource_log = ResourceLog(results_dir)
 
     data_root = args["data_root"]
     data_directory = [f'{data_root}/PhysioNet2021_preprocessed/WFDB_PTBXL',
@@ -118,6 +120,7 @@ def main():
     header_files, recording_files = find_challenge_files(data_directory)
     cinc_dataset = dataset(header_files, nr_leads=12, length=args["length"], normalize=args["normalize"], equivalent_cl='sinus_mi', return_source=False)
     classes_info(cinc_dataset)
+    resource_log.end_phase('load_dataset')
 
     # getting the dataset division
     # Path to the JSON file with dataset division for various traing ratios and folds
@@ -172,12 +175,21 @@ def main():
     print(args)
     print(DEVICE)
 
-    train_loop(model, train_loader, val_loader, args["epochs"], args["patience"], optimizer, criterion,
-               DEVICE, args["class_nr"], args["experiment_id"])
+    history = train_loop(model, train_loader, val_loader, args["epochs"], args["patience"], optimizer, criterion,
+                         DEVICE, args["class_nr"], args["experiment_id"])
+    resource_log.end_phase('train')
     # Female test set
-    test_loop(model, female_test_loader, DEVICE, args["class_nr"])
+    female_results = test_loop(model, female_test_loader, DEVICE, args["class_nr"])
     # Male test set
-    test_loop(model, male_test_loader, DEVICE, args["class_nr"])
+    male_results = test_loop(model, male_test_loader, DEVICE, args["class_nr"])
+    resource_log.end_phase('test')
+
+    # Test metrics per class (AF, SR, MI), for aggregating runs with scripts/summarize_runs.py
+    with open(f'{results_dir}/test_metrics.json', 'w') as f:
+        json.dump({'female': female_results, 'male': male_results}, f, indent=4)
+    epoch_seconds = [epoch['epoch_seconds'] for epoch in history]
+    resource_log.save(DEVICE, epochs=len(history), mean_epoch_seconds=round(float(np.mean(epoch_seconds)), 1),
+                      n_train=len(train), n_val=len(val), n_test_female=len(female_test), n_test_male=len(male_test))
 
 
 
