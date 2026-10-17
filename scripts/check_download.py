@@ -1,9 +1,9 @@
 """Check a PhysioNet/CinC 2021 download: count complete recordings and find damaged .mat files.
 
 A recording is complete when its .hea is a WFDB header and its .mat is the MATLAB v4 file the header
-describes: every CinC 2021 header says `<record>.mat 16+24 ...` (16-bit samples after a 24-byte MATLAB
-header), so the file holds 24 + 2 * signals * samples bytes and its MATLAB header is that of an int16
-signals x samples matrix named "val", the only thing scipy.io.loadmat reads before the samples.
+describes: every CinC 2021 header says `<record>.mat 16+24 ...` or `<record>.mat 16x1+24 ...`
+(16-bit samples after a 24-byte MATLAB header), so the file holds 24 + 2 * signals * samples bytes
+and its MATLAB header is that of an int16 signals x samples matrix named "val", the only thing scipy.io.loadmat reads before the samples.
 Interrupted downloads leave .mat files that are short or hold something else, which preprocessing
 then fails to read ("read length must be non-negative", "Mat 4 mopt wrong format").
 
@@ -16,10 +16,13 @@ then fails to read ("read length must be non-negative", "Mat 4 mopt wrong format
 Standard library only, so it runs before the Python environment is set up.
 """
 import os
+import re
 import struct
 import sys
 
 MAT_HEADER_BYTES = 24  # 5 int32 (type, rows, cols, imagf, name length) + "val\0"
+# WFDB format field: 16-bit samples, one sample per frame, 24-byte offset ("16+24" or "16x1+24")
+FORMAT_16_24 = re.compile(r'16(x1)?\+24')
 
 
 def expected_shape(header_file):
@@ -32,8 +35,8 @@ def expected_shape(header_file):
         raise ValueError('not a WFDB header')
     signals, samples = int(record_line[1]), int(record_line[3])
     signal_lines = [l.split() for l in lines[1:1 + signals]]
-    if signals < 1 or samples < 1 or any(l[:2] != [name + '.mat', '16+24'] for l in signal_lines) \
-            or len(signal_lines) < signals:
+    if signals < 1 or samples < 1 or len(signal_lines) < signals or any(
+            len(l) < 2 or l[0] != name + '.mat' or not FORMAT_16_24.fullmatch(l[1]) for l in signal_lines):
         raise ValueError('not a 16+24 header for this record')
     return signals, samples
 
