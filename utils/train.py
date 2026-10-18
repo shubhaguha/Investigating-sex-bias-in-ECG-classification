@@ -19,8 +19,7 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=patience)
 
     model_directory = 'results/model_weights/'
-    if not os.path.isdir(model_directory):
-        os.mkdir(model_directory)
+    os.makedirs(model_directory, exist_ok=True)  # SLURM array tasks start together and race to create it
 
     writer = SummaryWriter(comment=str('_' + experiment_ID))
     # Ensure the model is moved to the DEVICE
