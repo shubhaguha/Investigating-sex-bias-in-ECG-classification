@@ -185,8 +185,14 @@ def main():
     resource_log.end_phase('test')
 
     # Test metrics per class (AF, SR, MI), for aggregating runs with scripts/summarize_runs.py
+    # test_loop returns one value per class, in the model's output order (AF, SR, MI); store them by name
+    class_names = ['AF', 'SR', 'MI'][:args["class_nr"]]
+    metric_names = {'test_roc': 'roc_auc', 'p_roc_auc': 'p_roc_auc', 'pr_auc': 'pr_auc'}
+    test_metrics = {sex: {name: {metric_names[m]: float(results[m][i]) for m in metric_names}
+                          for i, name in enumerate(class_names)}
+                    for sex, results in [('female', female_results), ('male', male_results)]}
     with open(f'{results_dir}/test_metrics.json', 'w') as f:
-        json.dump({'female': female_results, 'male': male_results}, f, indent=4)
+        json.dump(test_metrics, f, indent=4)
     epoch_seconds = [epoch['epoch_seconds'] for epoch in history]
     resource_log.save(DEVICE, epochs=len(history), mean_epoch_seconds=round(float(np.mean(epoch_seconds)), 1),
                       n_train=len(train), n_val=len(val), n_test_female=len(female_test), n_test_male=len(male_test))

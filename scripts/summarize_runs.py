@@ -1,8 +1,10 @@
-"""Summarize the runs in results/: runtime, memory, disk usage and test ROC AUC per run, and the mean over seeds.
+"""Summarize the runs in results/: runtime, memory, disk usage and test metrics per run, and their mean over runs.
 
 Reads results/<experiment>/{args,resources,test_metrics}.json and gpu_usage.csv, written by
-train_pipeline.py and the slurm/train_*.sh jobs, and measures what each run left on disk. Writes
-results/summary.csv.
+train_pipeline.py and the slurm/train_*.sh jobs, and measures what each run left on disk. Test metrics
+(ROC AUC, partial ROC AUC up to FPR 0.2, PR AUC) are given per class and sex with 6 decimals. Runs are
+then grouped by model and sex ratio (all folds and seeds together) with the total runtime and the mean
+± SD of every metric. Writes results/summary.csv (one row per run) and results/summary_by_ratio.csv.
 
     python scripts/summarize_runs.py [--results_dir results]
 """
@@ -14,6 +16,10 @@ import os
 import statistics
 
 CLASSES = ['AF', 'SR', 'MI']
+SEXES = ['female', 'male']
+METRICS = ['roc_auc', 'p_roc_auc', 'pr_auc']
+METRIC_TITLES = {'roc_auc': 'ROC AUC', 'p_roc_auc': 'partial ROC AUC (FPR <= 0.2)', 'pr_auc': 'PR AUC'}
+OLD_METRIC_KEYS = {'roc_auc': 'test_roc', 'p_roc_auc': 'p_roc_auc', 'pr_auc': 'pr_auc'}
 
 
 def load_json(path):
@@ -21,6 +27,22 @@ def load_json(path):
         return None
     with open(path) as f:
         return json.load(f)
+
+
+def load_test_metrics(path):
+    """{sex: {class: {metric: value}}}. Also reads the older layout, {sex: {'test_roc': [AF, SR, MI], ...}}."""
+    metrics = load_json(path)
+    if metrics is None:
+        return None
+    for sex in SEXES:
+        if 'test_roc' in metrics[sex]:
+            metrics[sex] = {name: {m: metrics[sex][OLD_METRIC_KEYS[m]][i] for m in METRICS}
+                            for i, name in enumerate(CLASSES)}
+    return metrics
+
+
+def metric_columns():
+    return [f'{m}_{name}_{sex}' for m in METRICS for sex in SEXES for name in CLASSES]
 
 
 def gpu_usage(path):
@@ -87,18 +109,34 @@ def summarize(run_dir):
         'weights_mb': weights_mb,
         'disk_mb': disk_mb,
     }
-    metrics = load_json(os.path.join(run_dir, 'test_metrics.json'))
-    for sex in ['female', 'male']:
-        for i, name in enumerate(CLASSES):
-            row[f'auc_{name}_{sex}'] = round(metrics[sex]['test_roc'][i], 3) if metrics else None
+    metrics = load_test_metrics(os.path.join(run_dir, 'test_metrics.json'))
+    for m in METRICS:
+        for sex in SEXES:
+            for name in CLASSES:
+                row[f'{m}_{name}_{sex}'] = round(metrics[sex][name][m], 6) if metrics else None
     return row
 
 
-def print_table(rows, columns):
-    widths = [max(len(c), *(len(str(r[c])) for r in rows)) for c in columns]
-    print('  '.join(c.ljust(w) for c, w in zip(columns, widths)))
-    for r in rows:
-        print('  '.join(str(r[c]).ljust(w) for c, w in zip(columns, widths)))
+def print_table(rows, columns, headers=None):
+    headers = headers or columns
+    cells = [[f'{r[c]:.6f}' if isinstance(r[c], float) and c in METRIC_COLUMNS else str(r[c]) for c in columns]
+             for r in rows]
+    widths = [max(len(h), *(len(row[i]) for row in cells)) for i, h in enumerate(headers)]
+    print('  '.join(h.ljust(w) for h, w in zip(headers, widths)))
+    for row in cells:
+        print('  '.join(v.ljust(w) for v, w in zip(row, widths)))
+
+
+METRIC_COLUMNS = set(metric_columns())
+
+
+def mean_sd(values):
+    values = [v for v in values if v is not None]
+    if not values:
+        return None
+    if len(values) == 1:
+        return f'{values[0]:.6f}'
+    return f'{statistics.mean(values):.6f} ± {statistics.stdev(values):.6f}'
 
 
 def main():
@@ -121,32 +159,47 @@ def main():
     print(f"Total disk used by these runs: {sum(r['disk_mb'] for r in rows) / 1024:.2f} GB")
     print()
 
-    auc_columns = [f'auc_{name}_{sex}' for sex in ['female', 'male'] for name in CLASSES]
+    class_columns = [f'{name}_{sex}' for sex in SEXES for name in CLASSES]
+    for m in METRICS:
+        print(f'Test {METRIC_TITLES[m]} per run')
+        print_table(rows, ['experiment'] + [f'{m}_{c}' for c in class_columns], ['experiment'] + class_columns)
+        print()
+
+    # Mean over all runs of a model and sex ratio: the folds of train_best.sh, the seeds of train_grid.sh
     groups = {}
     for r in rows:
-        groups.setdefault((r['model'], r['sex_ratio'], r['fold']), []).append(r)
+        groups.setdefault((r['model'], r['sex_ratio']), []).append(r)
     means = []
-    for (model, ratio, fold), group in groups.items():
-        mean = {'model': model, 'sex_ratio (M_F)': ratio, 'fold': fold, 'runs': len(group),
-                'train_min': round(statistics.mean(r['train_min'] for r in group), 1)}
-        for c in auc_columns:
-            values = [r[c] for r in group if r[c] is not None]
-            if not values:
-                mean[c] = None
-            elif len(values) == 1:
-                mean[c] = f'{values[0]:.3f}'
-            else:
-                mean[c] = f'{statistics.mean(values):.3f}±{statistics.stdev(values):.3f}'
+    for (model, ratio), group in groups.items():
+        mean = {'model': model, 'sex_ratio (M_F)': ratio, 'runs': len(group),
+                'folds': ','.join(str(f) for f in sorted({r['fold'] for r in group})),
+                'seeds': ','.join(str(s) for s in sorted({r['seed'] for r in group})),
+                'total_runtime_h': f"{sum(r['total_min'] for r in group) / 60:.2f}",
+                'mean_runtime_h': f"{statistics.mean(r['total_min'] for r in group) / 60:.2f}"}
+        for c in metric_columns():
+            mean[c] = mean_sd([r[c] for r in group])
         means.append(mean)
-    print('Test ROC AUC, mean ± SD over seeds')
-    print_table(means, ['model', 'sex_ratio (M_F)', 'fold', 'runs', 'train_min'] + auc_columns)
+    group_columns = ['model', 'sex_ratio (M_F)', 'runs', 'folds', 'seeds']
+    print('Runtime per model and sex ratio (sum and mean over its runs)')
+    print_table(means, group_columns + ['total_runtime_h', 'mean_runtime_h'])
+    print(f"Total runtime of all runs: {sum(r['total_min'] for r in rows) / 60:.2f} h")
+    print()
+    for m in METRICS:
+        print(f'Test {METRIC_TITLES[m]}, mean ± SD over the runs of each model and sex ratio')
+        print_table(means, group_columns + [f'{m}_{c}' for c in class_columns], group_columns + class_columns)
+        print()
 
     out = os.path.join(args.results_dir, 'summary.csv')
     with open(out, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    print(f'\nWrote {out}')
+    out_means = os.path.join(args.results_dir, 'summary_by_ratio.csv')
+    with open(out_means, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=list(means[0]))
+        writer.writeheader()
+        writer.writerows(means)
+    print(f'Wrote {out} (one row per run) and {out_means} (mean ± SD per model and sex ratio)')
 
 
 if __name__ == '__main__':
