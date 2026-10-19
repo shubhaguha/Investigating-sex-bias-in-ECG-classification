@@ -64,7 +64,8 @@ if command -v nvidia-smi >/dev/null; then
     trap 'kill "$monitor" 2>/dev/null || true' EXIT
 fi
 
-python train_pipeline.py \
+# -u: unbuffered, so the log shows each epoch as it ends and survives a time-limit kill
+python -u train_pipeline.py \
     --data_root "$DATA_ROOT" \
     --model "$MODEL" \
     --sex_ratio "$RATIO" \
