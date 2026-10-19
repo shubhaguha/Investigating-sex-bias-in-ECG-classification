@@ -2,11 +2,13 @@
 from sklearn.metrics import roc_auc_score, average_precision_score
 from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
+from utils.resources import peak_gpu_memory_mb, peak_host_memory_mb
 import pickle
 import os
 import numpy as np
 import torch
 import copy
+import time
 import torch.optim as optim
 
 def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer, criterion, DEVICE, class_nr, experiment_ID = None):
@@ -17,8 +19,7 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=patience)
 
     model_directory = 'results/model_weights/'
-    if not os.path.isdir(model_directory):
-        os.mkdir(model_directory)
+    os.makedirs(model_directory, exist_ok=True)  # SLURM array tasks start together and race to create it
 
     writer = SummaryWriter(comment=str('_' + experiment_ID))
     # Ensure the model is moved to the DEVICE
@@ -26,6 +27,7 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
     previous_lr = optimizer.param_groups[0]['lr']
     print('First lr:', previous_lr)
     for epoch in range(num_epochs):
+        epoch_start = time.time()
         model.train()
         roc_epoch = [0] * class_nr
         temp_loss = 0
@@ -101,12 +103,18 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
         print("Train ROC AUC: ", train_roc_auc)
         print("Val loss: ", val_loss)
         print("Valid ROC AUC: ", val_roc_auc)
+        epoch_seconds = round(time.time() - epoch_start, 1)
+        gpu_allocated_mb, gpu_reserved_mb = peak_gpu_memory_mb(torch.device(DEVICE))
+        print(f"Epoch time: {epoch_seconds} s, peak GPU memory: {gpu_allocated_mb} MB allocated / "
+              f"{gpu_reserved_mb} MB reserved, peak host memory: {peak_host_memory_mb()} MB")
 
         OUTPUT.append({'epoch': epoch,
                        'train_rocauc': train_roc_auc,
                        'train_loss': train_loss,
                        'val_rocauc': val_roc_auc,
-                       'val_loss': val_loss})
+                       'val_loss': val_loss,
+                       'epoch_seconds': epoch_seconds,
+                       'peak_gpu_allocated_mb': gpu_allocated_mb})
 
         rounded_loss = round(val_loss, 3)
         scheduler.step(rounded_loss)
@@ -148,6 +156,7 @@ def train_loop(model, train_loader, val_loader, num_epochs, patience, optimizer,
     with open(path_name, 'wb') as handle:
         pickle.dump(OUTPUT, handle, protocol=pickle.HIGHEST_PROTOCOL)
         handle.close()
+    return OUTPUT
 
 
 def test_loop(model, test_loader, DEVICE, class_nr):
@@ -198,6 +207,7 @@ def test_loop(model, test_loader, DEVICE, class_nr):
     print([round(x, 2) for x in test_roc])
     print([round(x, 2) for x in p_roc_auc])
     print([round(x, 2) for x in pr_auc])
+    return {'test_roc': test_roc, 'p_roc_auc': p_roc_auc, 'pr_auc': pr_auc}
 
 
 
