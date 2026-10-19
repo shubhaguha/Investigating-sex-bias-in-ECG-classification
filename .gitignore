@@ -1,7 +1,10 @@
 __pycache__/
 *.pyc
 .venv/
-results/
+# results/: keep the small text outputs (metrics, args, resources, GPU samples, summaries);
+# leave out model weights and pickled training histories
+results/**/*.pth
+results/**/*.pickle
 runs/
 slurm/logs/*
 !slurm/logs/.gitkeep
