@@ -1,0 +1,52 @@
+JobID              JobName        State          Elapsed   TotalCPU     MaxRSS     ReqMem  MaxDiskRead MaxDiskWrite AllocTRES                                       NodeList 
+------------------ -------------- ----------- ---------- ---------- ---------- ---------- ------------ ------------ ---------------------------------------- --------------- 
+28277064_0         ecg-best       COMPLETED     01:32:07   01:27:43                   32G                           billing=128,cpu=18,gres/cpu=18,gres/gpu+            gcn8 
+28277064_0.batch   batch          COMPLETED     01:32:07   01:27:43      1.89G                 183.73G        0.03G cpu=18,gres/cpu=18,gres/gpu:a100=1,gres+            gcn8 
+28277064_0.extern  extern         COMPLETED     01:32:07   00:00:00                                                 billing=128,cpu=18,gres/cpu=18,gres/gpu+            gcn8 
+28277064_1         ecg-best       COMPLETED     01:18:48   01:14:54                   32G                           billing=128,cpu=18,gres/cpu=18,gres/gpu+            gcn7 
+28277064_1.batch   batch          COMPLETED     01:18:48   01:14:54      1.68G                 159.07G        0.03G cpu=18,gres/cpu=18,gres/gpu:a100=1,gres+            gcn7 
+28277064_1.extern  extern         COMPLETED     01:18:48   00:00:00                                                 billing=128,cpu=18,gres/cpu=18,gres/gpu+            gcn7 
+28277064_2         ecg-best       COMPLETED     00:30:35  28:26.576                   32G                           billing=128,cpu=18,gres/cpu=18,gres/gpu+            gcn7 
+28277064_2.batch   batch          COMPLETED     00:30:35  28:26.576      1.63G                  59.42G        0.02G cpu=18,gres/cpu=18,gres/gpu:a100=1,gres+            gcn7 
+28277064_2.extern  extern         COMPLETED     00:30:35   00:00:00                                                 billing=128,cpu=18,gres/cpu=18,gres/gpu+            gcn7 
+28277064_3         ecg-best       COMPLETED     01:46:33   01:43:30                   32G                           billing=128,cpu=18,gres/cpu=18,gres/gpu+            gcn7 
+28277064_3.batch   batch          COMPLETED     01:46:33   01:43:30      1.90G                 217.18G        0.03G cpu=18,gres/cpu=18,gres/gpu:a100=1,gres+            gcn7 
+28277064_3.extern  extern         COMPLETED     01:46:33   00:00:00                                                 billing=128,cpu=18,gres/cpu=18,gres/gpu+            gcn7 
+28277064_4         ecg-best       COMPLETED     01:31:09   01:27:26                   32G                           billing=128,cpu=18,gres/cpu=18,gres/gpu+           gcn31 
+28277064_4.batch   batch          COMPLETED     01:31:09   01:27:26      1.83G                 180.60G        0.03G cpu=18,gres/cpu=18,gres/gpu:a100=1,gres+           gcn31 
+28277064_4.extern  extern         COMPLETED     01:31:09   00:00:00                                                 billing=128,cpu=18,gres/cpu=18,gres/gpu+           gcn31 
+
+Disk usage
+path                                                               size      files
+/home/sguha/physionet.org                                           25G     176872
+/home/sguha/ecg_data/PhysioNet2021_preprocessed                     11G     175331
+/home/sguha/ecg_data/dataset_division.json                         7.7M          1
+results                                                            126M         37
+results/model_weights                                              126M         11
+runs                                                                34K         45
+slurm/logs                                                          27M         27
+/home/sguha/venvs/ecg-sexbias                                      6.1G      46321
+
+Free space
+Filesystem      Size  Used Avail Use% Mounted on
+home2           121T   73T   49T  61% /gpfs/home2
+
+
+Runtime, memory and disk usage per run
+experiment                           gpu                    epochs  total_min  load_min  train_min  mean_epoch_min  peak_gpu_allocated_gb  peak_gpu_used_gb  mean_gpu_util_pct  peak_host_memory_gb  weights_mb  disk_mb
+resnet_attention_50_50_fold0_seed42  NVIDIA A100-SXM4-40GB  50      91.7       1.9       89.1       1.8             2.7                    6.0               11                 2.0                  25.0        25.0   
+resnet_attention_50_50_fold1_seed42  NVIDIA A100-SXM4-40GB  43      78.4       1.7       75.9       1.8             2.7                    6.0               13                 2.0                  25.0        25.0   
+resnet_attention_50_50_fold2_seed42  NVIDIA A100-SXM4-40GB  16      30.3       1.7       28.0       1.7             2.7                    6.0               10                 1.9                  25.0        25.0   
+resnet_attention_50_50_fold3_seed42  NVIDIA A100-SXM4-40GB  59      106.3      1.7       103.9      1.8             2.7                    6.0               13                 2.1                  25.0        25.0   
+resnet_attention_50_50_fold4_seed42  NVIDIA A100-SXM4-40GB  49      90.7       1.7       88.3       1.8             2.7                    6.0               12                 1.9                  25.0        25.0   
+Total disk used by these runs: 0.12 GB
+
+Test ROC AUC, mean ± SD over seeds
+model             sex_ratio (M_F)  fold  runs  train_min  auc_AF_female  auc_SR_female  auc_MI_female  auc_AF_male  auc_SR_male  auc_MI_male
+resnet_attention  50_50            0     1     89.1       0.983          0.966          0.951          0.978        0.969        0.951      
+resnet_attention  50_50            1     1     75.9       0.986          0.965          0.953          0.980        0.967        0.962      
+resnet_attention  50_50            2     1     28.0       0.990          0.977          0.953          0.990        0.976        0.962      
+resnet_attention  50_50            3     1     103.9      0.965          0.965          0.931          0.963        0.948        0.941      
+resnet_attention  50_50            4     1     88.3       0.979          0.965          0.938          0.979        0.960        0.943      
+
+Wrote results/summary.csv

@@ -1,0 +1,116 @@
+JobID              JobName        State          Elapsed   TotalCPU     MaxRSS     ReqMem  MaxDiskRead MaxDiskWrite AllocTRES                                       NodeList 
+------------------ -------------- ----------- ---------- ---------- ---------- ---------- ------------ ------------ ---------------------------------------- --------------- 
+28373501_2         ecg-grid       COMPLETED     01:41:34   01:40:22                   32G                           billing=128,cpu=18,gres/cpu=18,gres/gpu+           gcn17 
+28373501_2.batch   batch          COMPLETED     01:41:34   01:40:22      1.84G                 210.83G        0.03G cpu=18,gres/cpu=18,gres/gpu:a100=1,gres+           gcn17 
+28373501_2.extern  extern         COMPLETED     01:41:34   00:00:00                                                 billing=128,cpu=18,gres/cpu=18,gres/gpu+           gcn17 
+28373501_6         ecg-grid       COMPLETED     01:25:04   01:22:07                   32G                           billing=128,cpu=18,gres/cpu=18,gres/gpu+           gcn12 
+28373501_6.batch   batch          COMPLETED     01:25:04   01:22:07      1.89G                 174.25G        0.03G cpu=18,gres/cpu=18,gres/gpu:a100=1,gres+           gcn12 
+28373501_6.extern  extern         COMPLETED     01:25:04   00:00:00                                                 billing=128,cpu=18,gres/cpu=18,gres/gpu+           gcn12 
+
+Disk usage
+path                                                               size      files
+/home/sguha/physionet.org                                           25G     176872
+/home/sguha/ecg_data/PhysioNet2021_preprocessed                     11G     175331
+/home/sguha/ecg_data/dataset_division.json                         7.7M          1
+results                                                            326M         95
+results/model_weights                                              326M         27
+runs                                                                85K         93
+slurm/logs                                                          34M         38
+/home/sguha/venvs/ecg-sexbias                                      6.1G      46321
+
+Free space
+Filesystem      Size  Used Avail Use% Mounted on
+home2           121T   73T   48T  61% /gpfs/home2
+
+
+Runtime, memory and disk usage per run
+experiment                           gpu                    epochs  total_min  load_min  train_min  mean_epoch_min  peak_gpu_allocated_gb  peak_gpu_used_gb  mean_gpu_util_pct  peak_host_memory_gb  weights_mb  disk_mb
+resnet_attention_100_0_fold0_seed42  NVIDIA A100-SXM4-40GB  31      75.7       8.7       65.6       2.1             2.7                    6.0               9                  2.0                  25.0        25.0   
+resnet_attention_100_0_fold0_seed43  NVIDIA A100-SXM4-40GB  17      35.6       1.9       32.6       1.9             2.7                    6.0               9                  1.9                  25.0        25.0   
+resnet_attention_100_0_fold0_seed44  NVIDIA A100-SXM4-40GB  58      101.2      2.4       98.0       1.7             2.7                    6.0               13                 2.0                  25.0        25.0   
+resnet_attention_50_50_fold0_seed42  NVIDIA A100-SXM4-40GB  50      91.7       1.9       89.1       1.8             2.7                    6.0               11                 2.0                  25.0        25.0   
+resnet_attention_50_50_fold0_seed43  NVIDIA A100-SXM4-40GB  66      121.5      1.7       119.0      1.8             2.7                    6.0               11                 2.0                  25.0        25.0   
+resnet_attention_50_50_fold0_seed44  NVIDIA A100-SXM4-40GB  47      87.1       1.7       84.6       1.8             2.7                    6.0               11                 2.0                  25.0        25.0   
+resnet_attention_50_50_fold1_seed42  NVIDIA A100-SXM4-40GB  43      78.4       1.7       75.9       1.8             2.7                    6.0               13                 2.0                  25.0        25.0   
+resnet_attention_50_50_fold2_seed42  NVIDIA A100-SXM4-40GB  16      30.3       1.7       28.0       1.7             2.7                    6.0               10                 1.9                  25.0        25.0   
+resnet_attention_50_50_fold3_seed42  NVIDIA A100-SXM4-40GB  59      106.3      1.7       103.9      1.8             2.7                    6.0               13                 2.1                  25.0        25.0   
+resnet_attention_50_50_fold4_seed42  NVIDIA A100-SXM4-40GB  49      90.7       1.7       88.3       1.8             2.7                    6.0               12                 1.9                  25.0        25.0   
+resnet_attention_0_100_fold0_seed42  NVIDIA A100-SXM4-40GB  47      84.7       2.3       81.6       1.7             2.7                    6.0               13                 2.0                  25.0        25.0   
+resnet_attention_0_100_fold0_seed43  NVIDIA A100-SXM4-40GB  52      98.1       1.2       96.2       1.8             2.7                    6.0               12                 1.9                  25.0        25.0   
+resnet_attention_0_100_fold0_seed44  NVIDIA A100-SXM4-40GB  29      56.2       1.1       54.4       1.9             2.7                    6.0               13                 1.9                  25.0        25.0   
+Total disk used by these runs: 0.32 GB
+
+Test ROC AUC per run
+experiment                           AF_female  SR_female  MI_female  AF_male   SR_male   MI_male 
+resnet_attention_100_0_fold0_seed42  0.989872   0.956663   0.940365   0.987472  0.965612  0.953208
+resnet_attention_100_0_fold0_seed43  0.986911   0.960813   0.938937   0.983597  0.967771  0.946747
+resnet_attention_100_0_fold0_seed44  0.969191   0.963853   0.929460   0.972891  0.967544  0.946919
+resnet_attention_50_50_fold0_seed42  0.982817   0.965703   0.951419   0.978364  0.969420  0.951386
+resnet_attention_50_50_fold0_seed43  0.976195   0.968305   0.933476   0.971600  0.967770  0.947078
+resnet_attention_50_50_fold0_seed44  0.983793   0.965758   0.945033   0.981552  0.966006  0.944447
+resnet_attention_50_50_fold1_seed42  0.985939   0.965430   0.953277   0.979546  0.967347  0.962293
+resnet_attention_50_50_fold2_seed42  0.990204   0.976933   0.952773   0.989998  0.975918  0.962267
+resnet_attention_50_50_fold3_seed42  0.964618   0.965335   0.930681   0.962623  0.948299  0.941068
+resnet_attention_50_50_fold4_seed42  0.979297   0.964521   0.937779   0.979086  0.959670  0.942847
+resnet_attention_0_100_fold0_seed42  0.987350   0.969980   0.954231   0.985817  0.970853  0.947981
+resnet_attention_0_100_fold0_seed43  0.984823   0.969593   0.940434   0.981013  0.965317  0.946838
+resnet_attention_0_100_fold0_seed44  0.989818   0.970601   0.951245   0.988630  0.969170  0.953180
+
+Test partial ROC AUC (FPR <= 0.2) per run
+experiment                           AF_female  SR_female  MI_female  AF_male   SR_male   MI_male 
+resnet_attention_100_0_fold0_seed42  0.976215   0.888305   0.866665   0.971406  0.912143  0.891000
+resnet_attention_100_0_fold0_seed43  0.969882   0.898231   0.867355   0.962357  0.917853  0.878944
+resnet_attention_100_0_fold0_seed44  0.934661   0.908562   0.844193   0.934586  0.922459  0.884911
+resnet_attention_50_50_fold0_seed42  0.963697   0.909789   0.879537   0.952032  0.922253  0.885895
+resnet_attention_50_50_fold0_seed43  0.945856   0.918468   0.869766   0.939680  0.919831  0.890994
+resnet_attention_50_50_fold0_seed44  0.963191   0.913521   0.874996   0.959018  0.915707  0.890222
+resnet_attention_50_50_fold1_seed42  0.967054   0.910441   0.893501   0.956608  0.916168  0.905144
+resnet_attention_50_50_fold2_seed42  0.977222   0.938663   0.888925   0.972217  0.936695  0.909592
+resnet_attention_50_50_fold3_seed42  0.930746   0.909696   0.866205   0.924370  0.866520  0.881579
+resnet_attention_50_50_fold4_seed42  0.955100   0.911870   0.868460   0.952726  0.896949  0.883315
+resnet_attention_0_100_fold0_seed42  0.971160   0.921239   0.889955   0.964752  0.925934  0.885107
+resnet_attention_0_100_fold0_seed43  0.962127   0.922735   0.877609   0.957645  0.916079  0.880384
+resnet_attention_0_100_fold0_seed44  0.974576   0.921600   0.883964   0.970865  0.919883  0.886553
+
+Test PR AUC per run
+experiment                           AF_female  SR_female  MI_female  AF_male   SR_male   MI_male 
+resnet_attention_100_0_fold0_seed42  0.905316   0.992161   0.651340   0.872131  0.993848  0.719876
+resnet_attention_100_0_fold0_seed43  0.880617   0.993002   0.630521   0.834823  0.994241  0.664918
+resnet_attention_100_0_fold0_seed44  0.807048   0.993870   0.591101   0.788328  0.994455  0.708681
+resnet_attention_50_50_fold0_seed42  0.871701   0.993606   0.664974   0.829784  0.994916  0.711723
+resnet_attention_50_50_fold0_seed43  0.819996   0.994432   0.667075   0.801472  0.994476  0.700394
+resnet_attention_50_50_fold0_seed44  0.873626   0.993965   0.663646   0.859549  0.994123  0.719845
+resnet_attention_50_50_fold1_seed42  0.868787   0.993396   0.729407   0.851065  0.994004  0.752344
+resnet_attention_50_50_fold2_seed42  0.909510   0.996400   0.684614   0.888424  0.996095  0.770158
+resnet_attention_50_50_fold3_seed42  0.798290   0.993572   0.687142   0.780693  0.989292  0.708199
+resnet_attention_50_50_fold4_seed42  0.841858   0.994137   0.633061   0.840099  0.993264  0.708295
+resnet_attention_0_100_fold0_seed42  0.881118   0.994589   0.694425   0.857101  0.994987  0.710149
+resnet_attention_0_100_fold0_seed43  0.844510   0.994505   0.668979   0.843738  0.993866  0.700033
+resnet_attention_0_100_fold0_seed44  0.897785   0.994471   0.672066   0.891463  0.994585  0.710071
+
+Runtime per model and sex ratio (sum and mean over its runs)
+model             sex_ratio (M_F)  runs  folds      seeds     total_runtime_h  mean_runtime_h
+resnet_attention  100_0            3     0          42,43,44  3.54             1.18          
+resnet_attention  50_50            7     0,1,2,3,4  42,43,44  10.10            1.44          
+resnet_attention  0_100            3     0          42,43,44  3.98             1.33          
+Total runtime of all runs: 17.62 h
+
+Test ROC AUC, mean ± SD over the runs of each model and sex ratio
+model             sex_ratio (M_F)  runs  folds      seeds     AF_female            SR_female            MI_female            AF_male              SR_male              MI_male            
+resnet_attention  100_0            3     0          42,43,44  0.981991 ± 0.011184  0.960443 ± 0.003609  0.936254 ± 0.005927  0.981320 ± 0.007552  0.966976 ± 0.001186  0.948958 ± 0.003682
+resnet_attention  50_50            7     0,1,2,3,4  42,43,44  0.980409 ± 0.008288  0.967426 ± 0.004353  0.943491 ± 0.009523  0.977538 ± 0.008526  0.964919 ± 0.008758  0.950198 ± 0.008884
+resnet_attention  0_100            3     0          42,43,44  0.987330 ± 0.002498  0.970058 ± 0.000509  0.948637 ± 0.007259  0.985153 ± 0.003852  0.968447 ± 0.002838  0.949333 ± 0.003380
+
+Test partial ROC AUC (FPR <= 0.2), mean ± SD over the runs of each model and sex ratio
+model             sex_ratio (M_F)  runs  folds      seeds     AF_female            SR_female            MI_female            AF_male              SR_male              MI_male            
+resnet_attention  100_0            3     0          42,43,44  0.960253 ± 0.022388  0.898366 ± 0.010129  0.859404 ± 0.013178  0.956116 ± 0.019187  0.917485 ± 0.005168  0.884952 ± 0.006028
+resnet_attention  50_50            7     0,1,2,3,4  42,43,44  0.957552 ± 0.015320  0.916064 ± 0.010425  0.877341 ± 0.010535  0.950950 ± 0.015205  0.910589 ± 0.022688  0.892392 ± 0.010852
+resnet_attention  0_100            3     0          42,43,44  0.969288 ± 0.006432  0.921858 ± 0.000781  0.883843 ± 0.006174  0.964421 ± 0.006616  0.920632 ± 0.004970  0.884015 ± 0.003226
+
+Test PR AUC, mean ± SD over the runs of each model and sex ratio
+model             sex_ratio (M_F)  runs  folds      seeds     AF_female            SR_female            MI_female            AF_male              SR_male              MI_male            
+resnet_attention  100_0            3     0          42,43,44  0.864327 ± 0.051119  0.993011 ± 0.000855  0.624321 ± 0.030594  0.831761 ± 0.041985  0.994181 ± 0.000308  0.697825 ± 0.029043
+resnet_attention  50_50            7     0,1,2,3,4  42,43,44  0.854824 ± 0.037419  0.994215 ± 0.001028  0.675703 ± 0.029574  0.835869 ± 0.036139  0.993739 ± 0.002149  0.724423 ± 0.026313
+resnet_attention  0_100            3     0          42,43,44  0.874471 ± 0.027252  0.994522 ± 0.000061  0.678490 ± 0.013886  0.864101 ± 0.024620  0.994479 ± 0.000568  0.706751 ± 0.005818
+
+Wrote results/summary.csv (one row per run) and results/summary_by_ratio.csv (mean ± SD per model and sex ratio)
