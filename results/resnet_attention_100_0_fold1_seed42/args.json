@@ -1,0 +1,19 @@
+{
+    "data_root": "/home/sguha/ecg_data",
+    "sex_ratio": "100_0",
+    "fold": 1,
+    "model": "resnet_attention",
+    "experiment_id": "resnet_attention_100_0_fold1_seed42",
+    "batch_size": 128,
+    "epochs": 100,
+    "lr": 0.001,
+    "loss": "focal",
+    "patience": 5,
+    "normalize": "z-score",
+    "length": 4096,
+    "class_nr": 3,
+    "gpu": 0,
+    "seed": 42,
+    "alpha": 0.75,
+    "beta": 2
+}
