@@ -1,0 +1,22 @@
+{
+    "hostname": "gcn22.local.snellius.surf.nl",
+    "slurm_job_id": "28338264",
+    "slurm_array_job_id": "28338093",
+    "slurm_array_task_id": "0",
+    "gpu": "NVIDIA A100-SXM4-40GB",
+    "seconds": {
+        "load_dataset": 523.2,
+        "train": 3938.7,
+        "test": 72.1,
+        "total": 4540.8
+    },
+    "peak_host_memory_mb": 1998.3,
+    "peak_gpu_allocated_mb": 2753.2,
+    "peak_gpu_reserved_mb": 5646.0,
+    "epochs": 31,
+    "mean_epoch_seconds": 126.1,
+    "n_train": 27550,
+    "n_val": 3061,
+    "n_test_female": 5643,
+    "n_test_male": 5643
+}
