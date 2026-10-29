@@ -51,6 +51,25 @@ Evaluation uses 5-fold cross-validation with sex-stratified test sets and report
 
 ---
 
+## Running
+
+```bash
+pip install -r requirements.txt
+
+# 1. Resample to 500 Hz and bandpass filter (1-47 Hz) the six databases of the PhysioNet 2021 download
+python scripts/preprocess_data.py --cinc_dir /path/to/physionet.org --data_root /path/to/ecg_data
+
+# 2. Create the 5-fold split with sex-balanced test sets and the F0-F100 training sets
+python scripts/make_dataset_division.py --data_root /path/to/ecg_data
+
+# 3. Train and evaluate one configuration (model, sex ratio male_female, test fold)
+python train_pipeline.py --data_root /path/to/ecg_data --model resnet_attention --sex_ratio 50_50 --fold 0 --experiment_id resnet_attention_50_50_fold0
+```
+
+Steps 1 and 2 recreate pieces that are not part of this repository: the preprocessed data folder and `dataset_division.json`. Preprocessing follows the CinC 2021 winning entry the paper builds on; the split follows Section 2.2, Figure 2 and Tables 3-4 of the paper (see `data/division.py`). Test results are printed at the end of training (ROC AUC, pROC AUC and PR AUC per class, for the female and then the male test set); weights and training history go to `results/model_weights/`.
+
+---
+
 ## Citation
 
 ```bibtex

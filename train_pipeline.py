@@ -20,6 +20,8 @@ import numpy as np
 def parse_args():
     parser = argparse.ArgumentParser(description='Provide necessary arguments for training the model')
 
+    parser.add_argument('-d', '--data_root', type=str, required=True,
+                        help="Directory containing PhysioNet2021_preprocessed/ and dataset_division.json")
     parser.add_argument('-r', '--sex_ratio', type=str, default='50_50',
                         help="The sex procentage ratio in the training data males vs females, options: [100_0, 75_25, 50_50, 25_75, 0_100]")
     parser.add_argument('-f', '--fold', type=int, default=0,
@@ -103,12 +105,13 @@ def main():
     results_dir = setup_directories(args["experiment_id"])
     save_args(args, results_dir)
 
-    data_directory = ['.../data/PhysioNet2021_preprocessed/WFDB_PTBXL',
-                      '.../data/PhysioNet2021_preprocessed/WFDB_CPSC2018',
-                      '.../data/PhysioNet2021_preprocessed/WFDB_CPSC2018_2',
-                      '.../data/PhysioNet2021_preprocessed/WFDB_Ga',
-                      '.../data/PhysioNet2021_preprocessed/WFDB_ChapmanShaoxing',
-                      '.../data/PhysioNet2021_preprocessed/WFDB_Ningbo']
+    data_root = args["data_root"]
+    data_directory = [f'{data_root}/PhysioNet2021_preprocessed/WFDB_PTBXL',
+                      f'{data_root}/PhysioNet2021_preprocessed/WFDB_CPSC2018',
+                      f'{data_root}/PhysioNet2021_preprocessed/WFDB_CPSC2018_2',
+                      f'{data_root}/PhysioNet2021_preprocessed/WFDB_Ga',
+                      f'{data_root}/PhysioNet2021_preprocessed/WFDB_ChapmanShaoxing',
+                      f'{data_root}/PhysioNet2021_preprocessed/WFDB_Ningbo']
 
     print('Finding header and recording files...')
     print(data_directory)
@@ -118,7 +121,7 @@ def main():
 
     # getting the dataset division
     # Path to the JSON file with dataset division for various traing ratios and folds
-    file_path = os.path.join(".../data/dataset_division.json")
+    file_path = os.path.join(f"{data_root}/dataset_division.json")
 
     with open(file_path, "r") as f:
         dataset_division = json.load(f)[str(args['fold'])]
